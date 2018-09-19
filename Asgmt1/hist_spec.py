@@ -21,9 +21,12 @@ import numpy as np
 import matplotlib.pyplot as plt # require pillow
 import matplotlib.image as mpimg
 import argparse
-import os.path
+import os
+import sys
 
-images_dir = "images/input/"
+os.chdir(sys.path[0])
+
+images_dir = os.path.join(".", "images", "input")
 
 def get_args():
     parser = argparse.ArgumentParser()
