@@ -23,6 +23,7 @@ import matplotlib.image as mpimg
 import argparse
 import os
 import sys
+import time
 
 os.chdir(sys.path[0])
 
@@ -51,6 +52,7 @@ def rgb2gray(rgb_image):
         gray_image: np.ndarray
             The transformed output image	
 	"""
+
 	return np.dot(rgb_image[...,:3], [0.299, 0.587, 0.114])
 
 
@@ -64,15 +66,14 @@ def imhist(img):
             Input image
 
     Returns:
-    	pixel_val: np.ndarray
-			The set of unique pixel values, s.t. the x axis values of histogram.
-		pixel_cnt: np.ndarray
-			Corresponding counts of the pixel_val, s.t. the y axis values of histogram. 
     -----------
-
+    	hist: dict
+    		keys: The set of unique pixel values, s.t. the x axis values of histogram.
+    		values: Corresponding counts of the pixel_val, s.t. the y axis values of histogram. 			
 	"""	
+
 	pixel_val, pixel_cnt = np.unique(img, return_counts = True)
-	return pixel_val, pixel_cnt
+	return dict(zip(pixel_val, pixel_cnt))
 
 
 def ecdf(img):
@@ -86,48 +87,46 @@ def ecdf(img):
 
     Returns:
     -----------
-    	pixel_val: np.ndarray
-			The set of unique pixel values, s.t. the x axis values of the empirical cumulative distribution.
-		ecdf: np.ndarray
-			The cumulative probability density values, s.t. the y axis values of histogram. 
+    	cdf: dict
+    		keys: The set of unique pixel values, s.t. the x axis values of the empirical cumulative distribution.
+    		values: The cumulative probability density values of corresponding keys, s.t. the y axis values of histogram. 			
     """
 
 	# Get the set of unique pixel values and their corresponding counts.
-	pixel_val, pixel_cnt = imhist(img)
+	hist = imhist(img)
 	# Calculate cumsum.
-	ecdf = np.cumsum(pixel_cnt).astype(np.float64)
+	pixel_ecdf = np.cumsum(list(hist.values())).astype(np.float64)
 	# Normalize to [0,1].
-	ecdf /= ecdf[-1]
-	return pixel_val, ecdf
+	pixel_ecdf /= pixel_ecdf[-1]
+	return dict(zip(list(hist.keys()), pixel_ecdf))
 
 
-def hist_match(x_org, y_org, x_tar, y_tar):
+def hist_match(cdf_org, cdf_tar):
     """
     Build the lookup table described in step 3.
 
     Arguments:
     -----------
-    	x_org, y_org: np.ndarray
-    		The cumulative distribution function of orginal image.
-    	x_tar, y_tar: np.ndarray
+    	cdf_org: dict
+    		The cumulative distribution function of orginal image.    		
+		cdf_tar: dict
     		The cumulative distribution function of target image.
 
     Returns:
     -----------
-    	x_lookup, y_lookup: np.ndarray
+    	lktbl: dict
     		Map from original brightness to target brightness.
     """
-    x_lookup = np.zeros(x_org.shape)
-    y_lookup = np.zeros(y_org.shape)
-    
-    for i in range(x_lookup.shape[0]):
-    	x_lookup[i] = x_org[i]
-    	y_lookup[i] = x_tar[np.argmin(np.abs(y_tar - y_org[i]))]
 
-    return x_lookup, y_lookup
+    lktbl = dict()
+    x_cdf_tar = list(cdf_tar.keys())
+    y_cdf_tar = np.array(list(cdf_tar.values()))
+    for x, y in cdf_org.items():
+    	lktbl[x] = x_cdf_tar[np.argmin(abs(y_cdf_tar - y))]
+    return lktbl
 
 
-def hist_specialize(img_org, img_tar, x_lookup, y_lookup):
+def hist_specialize(img_org, lktbl):
 	"""
     Map the new intensity of each pixel by finding the lookup table.
 
@@ -135,36 +134,27 @@ def hist_specialize(img_org, img_tar, x_lookup, y_lookup):
     -----------
 		img_org: np.ndarray
 			The original image.
-		img_tar: np.ndarray
-			The target image.
-    	x_lookup, y_lookup: np.ndarray
+    	lktbl: dict
     		Map from original brightness to target brightness.
 
     Returns:
     	img_adj: np.ndarray
     		The adjusted image.
-    -----------	
-	
-	"""
-	img_adj = np.zeros(img_org.shape)
-	row, col = img_org.shape
-	for i in range(row):
-		for j in range(col):
-			org_idx = np.argwhere(x_lookup == img_org[i][j])[0][0]
-			img_adj[i][j] = y_lookup[org_idx]
-	return img_adj
+    """
+    
+	return np.vectorize(lktbl.__getitem__)(img_org)
 
 
 def disp(img):
 	img_org, img_adj, img_tar = img
 
-	x_org_hist, y_org_hist = imhist(img_org)
-	x_adj_hist, y_adj_hist = imhist(img_adj)
-	x_tar_hist, y_tar_hist = imhist(img_tar)	
+	hist_org = imhist(img_org)	
+	hist_adj = imhist(img_adj)
+	hist_tar = imhist(img_tar)
 
-	x_org_cdf, y_org_cdf = ecdf(img_org)
-	x_adj_cdf, y_adj_cdf = ecdf(img_adj)
-	x_tar_cdf, y_tar_cdf = ecdf(img_tar)		
+	cdf_org = ecdf(img_org)
+	cdf_adj = ecdf(img_adj)
+	cdf_tar = ecdf(img_tar)
 
  	# Plot result.
 	fig = plt.figure()
@@ -186,17 +176,17 @@ def disp(img):
 	ax3.imshow(img_tar, cmap = plt.cm.gray)
 	ax3.set_title('Target')
 
-	ax4.plot(x_org_hist, y_org_hist, '--k', lw = 1, label = 'Original')
-	ax4.fill_between(x_org_hist, y_org_hist, interpolate = True, color = 'green', alpha = 0.5)
-	ax5.plot(x_adj_hist, y_adj_hist, '--k', lw = 1, label = 'Adjusted')
-	ax5.fill_between(x_adj_hist, y_adj_hist, interpolate = True, color = 'green', alpha = 0.5)
-	ax6.plot(x_tar_hist, y_tar_hist, '--k', lw = 1, label = 'Target')
-	ax6.fill_between(x_tar_hist, y_tar_hist, interpolate = True, color = 'green', alpha = 0.5)
+	ax4.plot(list(hist_org.keys()), list(hist_org.values()), '--k', lw = 1, label = 'Original')
+	ax4.fill_between(list(hist_org.keys()), list(hist_org.values()), interpolate = True, color = 'green', alpha = 0.5)
+	ax5.plot(list(hist_adj.keys()), list(hist_adj.values()), '--k', lw = 1, label = 'Adjusted')
+	ax5.fill_between(list(hist_adj.keys()), list(hist_adj.values()), interpolate = True, color = 'green', alpha = 0.5)
+	ax6.plot(list(hist_tar.keys()), list(hist_tar.values()), '--k', lw = 1, label = 'Target')
+	ax6.fill_between(list(hist_tar.keys()), list(hist_tar.values()), interpolate = True, color = 'green', alpha = 0.5)
 
-	ax7.plot(x_org_cdf, y_org_cdf, '-r', lw = 3, label = 'Original')
-	ax7.plot(x_adj_cdf, y_adj_cdf, '-b', lw = 3, label = 'Adjusted')
-	ax7.plot(x_tar_cdf, y_tar_cdf, '--y', lw = 3, label = 'Target')
-	ax7.set_xlim(x_org_cdf[0], x_org_cdf[-1])
+	ax7.plot(list(cdf_org.keys()), list(cdf_org.values()), '-r', lw = 3, label = 'Original')
+	ax7.plot(list(cdf_adj.keys()), list(cdf_adj.values()), '-b', lw = 3, label = 'Adjusted')
+	ax7.plot(list(cdf_tar.keys()), list(cdf_tar.values()), '--y', lw = 3, label = 'Target')
+	ax7.set_xlim(0, 255)
 	ax7.set_xlabel('Pixel value')
 	ax7.set_ylabel('Cumulative %')
 	ax7.legend(loc = 5)	
@@ -205,22 +195,29 @@ def disp(img):
 
 
 def main():
+	start_time = time.time()
 	# Get input images path.
 	args = get_args()
-
 	# Read in input images.
 	img_org = rgb2gray(mpimg.imread(os.path.join(images_dir, args.origin_file)))
 	img_tar = rgb2gray(mpimg.imread(os.path.join(images_dir, args.target_file)))
+	print("--- Read in input images: %s seconds ---" % (time.time() - start_time))
 
+	start_time = time.time()
 	# Implement step 1 and step 2 -- calculate the cumulative histograms of both images.
-	x_org_cdf, y_org_cdf = ecdf(img_org)
-	x_tar_cdf, y_tar_cdf = ecdf(img_tar)
+	cdf_org = ecdf(img_org)
+	cdf_tar = ecdf(img_tar)
+	print("--- Implement step 1 and step 2: %s seconds ---" % (time.time() - start_time))
 
+	start_time = time.time()
 	# Implement step 3 -- calculate lookup table.
-	x_lookup, y_lookup = hist_match(x_org_cdf, y_org_cdf, x_tar_cdf, y_tar_cdf)
+	lktbl = hist_match(cdf_org, cdf_tar)
+	print("--- Implement step 3: %s seconds ---" % (time.time() - start_time))
 
+	start_time = time.time()
 	# Implement step 4 -- map the new intensity of each pixel.
-	img_adj = hist_specialize(img_org, img_tar, x_lookup, y_lookup)
+	img_adj = hist_specialize(img_org, lktbl)
+	print("--- Implement step 4: %s seconds ---" % (time.time() - start_time))
 
 	# Display results.
 	disp((img_org, img_adj, img_tar))
