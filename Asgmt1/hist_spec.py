@@ -28,13 +28,16 @@ import time
 os.chdir(sys.path[0])
 
 images_dir = os.path.join(".", "images", "input")
+result_dir = os.path.join(".", "images", "output")
 
 def get_args():
     parser = argparse.ArgumentParser()
     origin_file = "test_o.jpg"
     target_file = "test_t.jpg"
+    result_file = "test.svg"
     parser.add_argument('-o', "--origin_file", default = origin_file, help = "Original images to be specialized.")
     parser.add_argument('-t', "--target_file", default = target_file, help = "Target images.")
+    parser.add_argument('-r', "--result_file", default = result_file, help = "File name to save result graph.")
     return parser.parse_args()
 
 
@@ -145,7 +148,7 @@ def hist_specialize(img_org, lktbl):
 	return np.vectorize(lktbl.__getitem__)(img_org)
 
 
-def disp(img):
+def disp(img, args):
 	img_org, img_adj, img_tar = img
 
 	hist_org = imhist(img_org)	
@@ -157,7 +160,7 @@ def disp(img):
 	cdf_tar = ecdf(img_tar)
 
  	# Plot result.
-	fig = plt.figure()
+	fig = plt.figure(figsize = (19.2,10.8))
 	gs = plt.GridSpec(3, 3)
 	ax1 = fig.add_subplot(gs[0, 0])
 	ax2 = fig.add_subplot(gs[0, 1], sharex = ax1, sharey = ax1)
@@ -191,7 +194,11 @@ def disp(img):
 	ax7.set_ylabel('Cumulative %')
 	ax7.legend(loc = 5)	
 
+	if not os.path.exists(result_dir):
+		os.makedirs(result_dir)
+	plt.savefig(os.path.join(result_dir, args.result_file), bbox_inches = 'tight', format = args.result_file.split('.')[-1])
 	plt.show()
+
 
 
 def main():
@@ -220,7 +227,7 @@ def main():
 	print("--- Implement step 4: %s seconds ---" % (time.time() - start_time))
 
 	# Display results.
-	disp((img_org, img_adj, img_tar))
+	disp((img_org, img_adj, img_tar), args)
 
 
 if __name__ == '__main__':

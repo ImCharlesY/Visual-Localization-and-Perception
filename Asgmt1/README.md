@@ -55,19 +55,20 @@ python [script name].py -h
 
 All the scripts use `argparse` module to make it easy to write user-friendly command-line interfaces. You can use option `-h` or `--help` to get a useful usage message for each script.
 
-For this script, there are 2 other options that you can use in command line.
+For this script, there are 3 other options that you can use in command line.
 
 |  option  |         description         |    default   |
 | -------- |:---------------------------:|:------------:|
 |    -o    | the orginal image file name | "test_o.jpg" |
 |    -t    | the target image file name  | "test_t.jpg" |
+|    -r    | file name to save the result|  "test.svg"  |
 
-You should put your data (pairs of images with different exposure time) in directory `images/input/` . Then use the `-o` and `-t` options to apply __Histogram Specialization__ to them.
+You should put your data (pairs of images with different exposure time) in directory `images/input/` . Using the `-o`, `-t` and `-r` options to apply __Histogram Specialization__ to them. Then you can get the result graph in directory `images/output/` .  
 
 For example:
 
 ```
-python hist_spec.py -o test_o.jpg -t test_t.jpg
+python hist_spec.py -o test_o.jpg -t test_t.jpg -r test.svg
 ```
 
 
