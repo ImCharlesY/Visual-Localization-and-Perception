@@ -1,0 +1,10 @@
+# pdf or docx documents
+*.pdf
+*.docx
+*.doc
+
+# images
+images/output
+images/input/*.jpg
+!images/input/test_o.jpg
+!images/input/test_t.jpg
