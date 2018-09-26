@@ -45,7 +45,7 @@ Write a small program to implement a histogram specialization algorithm as the `
 pip install -r requirements.txt
 ```
 
-If everything works well, you can run `python ./Asgmt1/hist_spec.py` to apply histogram specialization to a pair of test images.
+If everything works well, you can run `python hist_spec.py` to apply histogram specialization to a pair of test images.
 
 ### Command-line
 
