@@ -4,11 +4,11 @@
 
 ## 1. Requirements
 #### General
-- Python (verified on 3.5.4)
+- Python (verified on 3.6.1)
 
 #### Python Packages
 - numpy (verified on 1.14.3)
-- matplotlib (verified on 3.2.1)
+- matplotlib (verified on 2.2.2)
 - argparse (standard library, verified on 1.1)
 
 ## 2. Relevant information
