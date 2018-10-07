@@ -116,42 +116,22 @@ def findLocalMax(ridx, dst):
 		cidx: np.ndarray, dtype = bool
 		    Boolen matrix to store where in dst the reponse value is larger than threshold and also the maximum in local region.
 	"""	
- 
-	width = ridx.shape[1]
 
-	pos_list = np.argwhere(ridx == True)
-
-	group_list = [np.array([pos_list[0,]])]
-	for new_pos in pos_list[1:,]:
-		new_group = True
-		nearby_group = np.argwhere(
-			np.array([np.any((np.abs(group[:,0] - new_pos[0]) < 2) & (np.abs(group[:,1] - new_pos[1]) < 2)) 
-				for group in group_list]) 
-			== True).reshape((1,-1))[0]
-		for i in range(len(nearby_group)):
-			group_list[nearby_group[i]] = np.append(group_list[nearby_group[i]], [new_pos], axis = 0)
-			new_group = False
-		if new_group:
-			group_list.append(np.array([new_pos]))
-
-	group_list_flatten = np.array([np.array([pos[0] * width + pos[1] for pos in group]) for group in group_list])
-	group_list_combine = [group_list_flatten[0]]
-	for group in group_list_flatten[1:]:
-		new_group = True
-		for i in range(len(group_list_combine)):
-			if np.intersect1d(group_list_combine[i], group).size >= 100:
-				group_list_combine[i] = np.unique(np.append(group_list_combine[i], group))
-				new_group = False
-				break
-		if new_group:
-			group_list_combine.append(np.array(group))
-
-	group_list = [np.array([np.array(divmod(pos, width)) for pos in group]) for group in group_list_combine]
+	'''Note:
+	Non-local-maxima Suppression:
+	In order to detect all the local maxima in the image intensity regardless of their intensity value. We first apply a dilation 
+	to the orginal corner responses, then find the pixels where the original image and its dilated version have the same value. 
+	This works because, by definition, dilation(x, y, E, dst) = max_{(x,y) in E} (dst_{x,y}), and therefore 
+	dilation(x, y, E, dst) = dst(x, y) whenever (x,y) is the location of a local maximum at the scale of E.
+	'''
 
 	cidx = np.zeros(dst.shape).astype('bool')
-	for group in group_list:
-		c_pos = group[np.argmax(dst[group[:,0], group[:,1]]), ]
-		cidx[c_pos[0]-2:c_pos[0]+3, c_pos[1]-2:c_pos[1]+3] = True
+	# Here we apply a dilation to dst and find the pixels whose values keep still during dilation
+	# then choose pixels that are also in ridx.
+	cidx[ridx & (dst == cv2.dilate(dst, None))] = True 
+	corner_list = np.argwhere(cidx == True)
+	for corner in corner_list:
+		cidx[corner[0]-1:corner[0]+2, corner[1]-1:corner[1]+2] = True
 
 	return cidx
 

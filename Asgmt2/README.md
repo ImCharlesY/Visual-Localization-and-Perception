@@ -34,7 +34,11 @@ We set the threshold by <img src="http://latex.codecogs.com/svg.latex?thresh%20%
 
 + 3. Find local maximum in each region.
 
-We regard two cliques with less than 100 adjacent pixels as different regions. Then we use the pixel with local maximum corner response to represent each region. These pixels are just the corners we want to detect.
+We use a method named Non-local-maxima Suppression to find local maximum in each region. According to this method, we first apply a dilation to the orginal corner responses dst(x,y), then find the pixels where the original image and its dilated version have the same value. In order to find the local maximum in each region instead of all the image, we only choose the pixels that are also in the regions defined in step 2).
+
+This works because, by definition, dilation(x,y,E,dst) = max_{(x,y)∈E} (⁡dst(x,y)) , where E is small patch for dilation, and therefore dilation(x,y,E,dst) = max_{(x,y)∈E} (dst(x,y)) = dst(x,y) whenever (x, y) is the location of a local maximum at the scale of E.
+
+After the above steps, we get a cluster of pixels. These pixels are just the corners we want to detect.
 
 ## 4. Assignment requirements
 Write a small program to implement a Harris feature detector as the `Relevant Information` part describes.
