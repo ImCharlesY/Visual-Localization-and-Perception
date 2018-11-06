@@ -1,46 +1,22 @@
-﻿# Feature Detection
+﻿# Gauss-Newton Algorithm
  
- This is the second assignment of the lesson and it requires us to write a small program to implement a the Harris feature detector.
+ This is the third assignment of the lesson and it requires us to write a small program to solve a rotation matrix with Gauss-Newton algorithm.
 
 ## 1. Requirements
 #### General
-- Python (verified on 3.6.1)
+- Python (verified on 3.6.3)
 
 #### Python Packages
 - numpy (verified on 1.14.3)
 - matplotlib (verified on 2.2.2)
 - argparse (standard library, verified on 1.1)
-- cv2 (verified on 3.4.3)
+- scipy (verified on 0.19.1)
 
-## 2. Relevant information
-*Corner*: A corner is a point that can be interpreted as the junction of two edges in images. Its local neighborhood always stands in two dominant and different edge directions. 
+## 2. Algorithm
 
-*Harris Corner Detector* :In order to capture the corners from the image, researchers have proposed many different corner detectors including the Kanade-Lucas-Tomasi (KLT) operator and the Harris operator which are most simple, efficient and reliable for use in corner detection. 
+![image](https://github.com/ImCharlesY/Visual-Localization-and-Perception/raw/master/Asgmt3/images/algo.png)
 
-## 3. Algorithm
-
-+ 1. Compute corner response.
-
-For each pixel (x,y) in the input image, we calculates a 2 * 2 gradient covariance matrix M(x,y) over a windowSize * windowSize neighborhood. Then, the Harris corner response is defined as follows:
-<img src="http://latex.codecogs.com/svg.latex?dst_%7Bx%2Cy%7D%20%3D%20det%28M%29%20-%20k%5Ccdot%20tri%28M%29%5E2" />, where M is given by 
-
-<img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/a617dda21e306dbfbdb7a186b1c203e3f3443867" /> 
-
-and k is an empirical constant (0.04-0.06).
-
-+ 2. Find region of pixels whose corner responses are larger the threshold.
-
-We set the threshold by <img src="http://latex.codecogs.com/svg.latex?thresh%20%5Ccdot%20max%28dst_%7Bx%2Cy%7D%29" /> where `thresh` is a given parameter.
-
-+ 3. Find local maximum in each region.
-
-We use a method named Non-local-maxima Suppression to find local maximum in each region. According to this method, we first apply a dilation to the orginal corner responses dst(x,y), then find the pixels where the original image and its dilated version have the same value. In order to find the local maximum in each region instead of all the image, we only choose the pixels that are also in the regions defined in step 2).
-
-This works because, by definition, dilation(x,y,E,dst) = max_{(x,y)∈E} (⁡dst(x,y)) , where E is small patch for dilation, and therefore dilation(x,y,E,dst) = max_{(x,y)∈E} (dst(x,y)) = dst(x,y) whenever (x, y) is the location of a local maximum at the scale of E.
-
-After the above steps, we get a cluster of pixels. These pixels are just the corners we want to detect.
-
-## 4. Assignment requirements
+## 3. Assignment requirements
 Write a small program to implement a Harris feature detector as the `Relevant Information` part describes.
 
 - In any language (C++, java, python, Matlab).
@@ -51,7 +27,7 @@ Write a small program to implement a Harris feature detector as the `Relevant In
 
 - A short report about the experimental results.
 
-## 5. Run the scripts
+## 4. Run the scripts
 
 ### Install the requirements
 
@@ -67,21 +43,31 @@ python [script name].py -h
 
 All the scripts use `argparse` module to make it easy to write user-friendly command-line interfaces. You can use option `-h` or `--help` to get a useful usage message for each script.
 
-For this script, there are 5 other options that you can use in command line.
+For this script, there are 7 other options that you can use in command line.
 
-|  option  |         description                |   default  |
-| -------- |:----------------------------------:|:----------:|
-|    -i    | the orginal image file name        | "test.jpg" |
-|    -w    | the size of the sliding window     |      2     |
-|    -k    | An empirical constant              |    0.04    |
-|    -t    | The threshold for an optimal value |   0.001    |
+```
+usage: Gauss_Newton.py [-h] [--maxits [MAXITS]] [--seed [RANDOM_SEED]]
+                       [--num_init [NUM_INIT]] [--orth] [--result] [--legend]
+                       [--plot]
 
-You should put your images in directory `images/input/` . Using the above options to set appropriate parameters and apply __Harris Feature Detector__ to them. Then you can get the result graph in directory `images/output/` .  
+optional arguments:
+  -h, --help            show this help message and exit
+  --maxits [MAXITS]     Maximum number of iterations of the algorithm to
+                        perform. Default 256.
+  --seed [RANDOM_SEED]  Random seed. Default 0
+  --num_init [NUM_INIT]
+                        Number of initial guesses. Default 10.
+  --orth                Whether to orthogonalize the initial guesses.
+  --result              Whether to save the results.
+  --legend              Whether to show the legend in error graph.
+  --plot                Whether to show the error graph.
+
+```
+
+Note: You can get the error graph in directory `./result/`. If you specify `--result` option, then you also get the solution in the same directory. 
 
 For example:
 
 ```
-python feat_detection.py -i test.jpg -w 2 -k 0.04 -t 0.001
+python -m Gauss_Newton --num_init 100 --plot
 ```
-
-

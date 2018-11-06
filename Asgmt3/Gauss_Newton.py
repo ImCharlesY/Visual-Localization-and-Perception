@@ -16,7 +16,7 @@ from scipy import io
 import matplotlib.pyplot as plt
 
 # If run in Windows, comment this line.
-plt.switch_backend('agg')
+# plt.switch_backend('agg')
 
 def get_args():
 	parser = argparse.ArgumentParser()
@@ -152,8 +152,6 @@ if __name__ == '__main__':
 		print("  Solution      : \r\n{}".format(sol))
 		print("  Error         : {}".format(err))
 		print('-'*50)
-		if args.save_result:
-			io.savemat('./result/solution'+str(i + 1)+'.mat', {'R0':R0,'R':sol})
 		errs_all.append(errs)
 		if err < min_err:
 			min_err = err
@@ -164,7 +162,6 @@ if __name__ == '__main__':
 	print('-'*50)	
 	if args.save_result:		
 		io.savemat('./result/solution_best.mat', {'R':best_sol})			
-
 
 	# Display
 	fig = plt.figure(figsize = (19.2,10.8))
