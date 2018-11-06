@@ -1,0 +1,4 @@
+# pdf or docx documents
+*.pdf
+*.docx
+*.doc

@@ -1,0 +1,5 @@
+numpy==1.14.3
+pillow
+matplotlib==2.2.2
+opencv-python
+	
