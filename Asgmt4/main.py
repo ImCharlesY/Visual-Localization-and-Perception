@@ -14,12 +14,13 @@ import argparse
 from methods import * # direct_linear_transformation, absolute_orientation, gauss_newton
 
 def get_args():
-	parser = argparse.ArgumentParser()
-	parser.add_argument('--maxits', default = 256, type = np.int, nargs = '?', help = "Maximum number of iterations of the algorithm to perform. Default 256.")
-	parser.add_argument('--seed', dest = 'random_seed', default = 0, type = np.int, nargs = '?', help = "Random seed. Default 0")
-	parser.add_argument('--custom_data', dest = 'custom', action = 'store_const', const = True, help = "Whether to use custom dataset.")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--maxits', default = 256, type = np.int, nargs = '?', help = "Maximum number of iterations of the algorithm to perform. Default 256.")
+    parser.add_argument('--seed', dest = 'random_seed', default = 0, type = np.int, nargs = '?', help = "Random seed. Default 0")
+    parser.add_argument('--var', default = 1.0, type = np.float64, nargs = '?', help = "The variance of the additive Gauss noise. Default 1.0")
+    parser.add_argument('--add_noise', dest = 'noise', action = 'store_const', const = True, help = "Whether to add Gauss noise to the input vectors.")
     parser.add_argument('--save', dest = 'save_result', action = 'store_const', const = True, help = "Whether to save the results.")
-	return parser.parse_args()
+    return parser.parse_args()
 
 
 if __name__ == '__main__':
@@ -29,16 +30,15 @@ if __name__ == '__main__':
     np.random.seed(args.random_seed)
 
     # Load data.
-    if args.custom:
-        X = np.random.uniform(0,10,(3,3))
-        U,__,VT = np.linalg.svd(np.random.randn(9).reshape((3,3)).astype('float64'))
-        R = np.dot(U, VT)
-        y = np.dot(R, X)
-        print('Rotation matrix to be solve: \n{0}'.format(R))
-    else:
-        from scipy import io
-        data = io.loadmat('./data/xy.mat')
-        X, y = data['x'], data['y']
+    from scipy import io
+    data = io.loadmat('./data/xy.mat')
+    X, y = data['x'], data['y']
+
+    # Add noise
+    if args.noise:
+        noise = np.random.uniform(0, args.var, (3,1))
+        X += noise
+        y += noise
 
     # --------------------------------------------------------------------------------------------
     print('==> Solve via direct linear transformation (closed form method)..')
