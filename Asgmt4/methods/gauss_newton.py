@@ -94,7 +94,7 @@ if __name__ == '__main__':
 
 	# Load data.
 	from scipy import io
-	data = io.loadmat('./data/xy.mat')
+	data = io.loadmat('../data/xy.mat')
 	X, y = data['x'], data['y']
 
 	U,__,VT = np.linalg.svd(np.zeros((3,3)))
