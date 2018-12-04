@@ -94,8 +94,8 @@ def absolute_orientation(X, y):
 	# Apply Eigen Decomposition
 	eigenvalues, eigenvectors = np.linalg.eig(A)
 
-	assert (eigenvectors.T - np.linalg.inv(eigenvectors) < 1e-10).all() # Check if orthogonal.
-	assert np.linalg.det(eigenvectors) - 1 < 1e-10                      # Check if its det is 1.
+	# assert (eigenvectors.T - np.linalg.inv(eigenvectors) < 1e-10).all() # Check if orthogonal.
+	# assert np.linalg.det(eigenvectors) - 1 < 1e-10                      # Check if its det is 1.
 
 	# Choose the eigenvector with maximum eigenvalue
 	quat = eigenvectors[:,np.argmax(eigenvalues)]
