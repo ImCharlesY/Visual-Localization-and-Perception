@@ -11,6 +11,20 @@ Date     		: 2018-12-04
 import numpy as np
 
 def direct_linear_transformation(X, y):
+	"""Direct Linear Transformation
+	Parameters
+	----------
+	X : ndarray
+		Original vectors.
+	y : ndarray
+		Target vectors after rotation.
+	Return
+	------
+	sol : ndarray
+	    The rotation matrix.
+	err : float
+		The mean square error.
+	"""
 
 	def vector_span(x_vector):
 		zero_vector = np.zeros(3)
@@ -19,7 +33,8 @@ def direct_linear_transformation(X, y):
 			np.hstack([zero_vector,zero_vector,x_vector])])
 
 	def calc_err(X, y, R):
-		# Calculate the standard deviation.
+		""" Calculate the standard deviation.
+		"""
 		err = y - np.dot(R, X)
 		return np.trace(np.dot(err.T, err))
 

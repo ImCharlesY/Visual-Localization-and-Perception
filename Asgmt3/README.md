@@ -16,18 +16,7 @@
 
 ![image](https://github.com/ImCharlesY/Visual-Localization-and-Perception/raw/master/Asgmt3/images/algo.png)
 
-## 3. Assignment requirements
-Write a small program to implement a Harris feature detector as the `Relevant Information` part describes.
-
-- In any language (C++, java, python, Matlab).
-
-- Implement each step described in the algorithm.
-
-- Readme.txt about how to compile and run the program.
-
-- A short report about the experimental results.
-
-## 4. Run the scripts
+## 3. Run the scripts
 
 ### Install the requirements
 

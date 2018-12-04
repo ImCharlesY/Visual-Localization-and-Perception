@@ -12,25 +12,22 @@ import math
 import numpy as np
 
 def absolute_orientation(X, y):
-
-	def skew_right(u):
-		"""Span a (3,1) vector or a (4,1) quaternion into its corresponding (4,4) right multipy skew symmetric matrix.
-		"""
-
-		if u.size == 3:
-			return np.array([
-				[   0, -u[0], -u[1], -u[2]], 
-				[u[0],     0,  u[2], -u[1]], 
-				[u[1], -u[2],     0,  u[0]], 
-				[u[2],  u[1], -u[0],    0]])
-		elif u.size == 4:
-			return np.array([
-				[u[0], -u[1], -u[2], -u[3]], 
-				[u[1],  u[0],  u[3], -u[2]], 
-				[u[2], -u[3],  u[0],  u[1]], 
-				[u[3],  u[2], -u[1],  u[0]]])
-		else:
-			return np.identity(4)
+	"""Absolute Orientation Algorithm.
+	Parameters
+	----------
+	X : ndarray
+		Original vectors.
+	y : ndarray
+		Target vectors after rotation.
+	Return
+	------
+	quat : ndarray
+		Unit quaternion.
+	rotation_matirx : ndarray
+	    The rotation matrix.
+	err : float
+		The mean square error.
+	"""
 
 	def skew_left(u):
 		"""Span a (3,1) vector or a (4,1) quaternion into its corresponding (4,4) left multipy skew symmetric matrix.
@@ -51,11 +48,30 @@ def absolute_orientation(X, y):
 		else:
 			return np.identity(4)
 
-	def quaternion_matrix(quaternion):
+	def skew_right(u):
+		"""Span a (3,1) vector or a (4,1) quaternion into its corresponding (4,4) right multipy skew symmetric matrix.
+		"""
+
+		if u.size == 3:
+			return np.array([
+				[   0, -u[0], -u[1], -u[2]], 
+				[u[0],     0,  u[2], -u[1]], 
+				[u[1], -u[2],     0,  u[0]], 
+				[u[2],  u[1], -u[0],    0]])
+		elif u.size == 4:
+			return np.array([
+				[u[0], -u[1], -u[2], -u[3]], 
+				[u[1],  u[0],  u[3], -u[2]], 
+				[u[2], -u[3],  u[0],  u[1]], 
+				[u[3],  u[2], -u[1],  u[0]]])
+		else:
+			return np.identity(4)
+
+	def quaternion_matrix(quat):
 	    """Return homogeneous rotation matrix from quaternion.
 	    """
 
-	    q = np.array(quaternion, dtype=np.float64, copy=True)
+	    q = np.array(quat, dtype=np.float64, copy=True)
 	    n = np.dot(q, q)
 	    q *= math.sqrt(2.0 / n)
 	    q = np.outer(q, q)
@@ -65,16 +81,23 @@ def absolute_orientation(X, y):
 	        [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2]]])
 
 	def calc_err(X, y, R):
-		# Calculate the standard deviation.
+		"""Calculate the standard deviation.
+		"""
+
 		err = y - np.dot(R, X)
 		return np.trace(np.dot(err.T, err))
 
+	# Object function: argmax(q.T*A*q)
+	# Calculate matrix A = [y_i]_L^T[x_i]_R
 	A = np.sum([np.dot(skew_left(y).T, skew_right(x)) for x, y in zip(X.T, y.T)], axis=0)
+
+	# Apply Eigen Decomposition
 	eigenvalues, eigenvectors = np.linalg.eig(A)
 
 	assert (eigenvectors.T - np.linalg.inv(eigenvectors) < 1e-10).all() # Check if orthogonal.
 	assert np.linalg.det(eigenvectors) - 1 < 1e-10                      # Check if its det is 1.
 
+	# Choose the eigenvector with maximum eigenvalue
 	quat = eigenvectors[:,np.argmax(eigenvalues)]
 	rotation_matirx = quaternion_matrix(quat)
 	return quat, rotation_matirx, calc_err(X, y, rotation_matirx)

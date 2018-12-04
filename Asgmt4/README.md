@@ -1,6 +1,6 @@
 ﻿# Gauss-Newton Algorithm
  
- This is the third assignment of the lesson and it requires us to write a small program to solve a rotation matrix with Gauss-Newton algorithm.
+ This is the fourth assignment of the lesson and it requires us to write a small program to solve a rotation matrix with Direct Linear Transformation method (DLT) and Absolute Orientation algorithm.
 
 ## 1. Requirements
 #### General
@@ -14,18 +14,6 @@
 
 ## 2. Algorithm
 
-![image](https://github.com/ImCharlesY/Visual-Localization-and-Perception/raw/master/Asgmt3/images/algo.png)
-
-## 3. Assignment requirements
-Write a small program to implement a Harris feature detector as the `Relevant Information` part describes.
-
-- In any language (C++, java, python, Matlab).
-
-- Implement each step described in the algorithm.
-
-- Readme.txt about how to compile and run the program.
-
-- A short report about the experimental results.
 
 ## 4. Run the scripts
 

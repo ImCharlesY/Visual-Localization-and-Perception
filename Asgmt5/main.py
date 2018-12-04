@@ -37,9 +37,7 @@ def display(x, y, y_transformed):
     ax.set_ylabel('Y Label')
     ax.set_zlabel('Z Label')
 
-    ax.legend(['source points set (src)', 'destination points set (dst)', 'src after transformation'])
-
-    plt.show()
+    ax.legend(['source points cloud (src)', 'destination points cloud (dst)', 'src after transformation'])
 
 def solve():
 
@@ -51,6 +49,12 @@ def solve():
     T, __ = icp(x.T, y.T)
 
     print('The rigid body transformation: \n{0}'.format(T))
+
+    src = np.ones((4, x.shape[1]))
+    src[:3,:] = np.copy(x)
+    y_transformed = np.dot(T, src)[:3,]
+
+    display(x, y, y_transformed)    
 
     if not os.path.exists('./result/'):
         os.makedirs('./result/')    
@@ -75,7 +79,7 @@ def validate():
     y_transformed = np.dot(T_transformed, src)[:3,]
 
     print('Rigid body transformation: \n{0}'.format(T_transformed))
-    print('MSE between destination points set and source point set after transformation: {0}'.format(calc_err(x.T,y.T,T_transformed)))
+    print('MSE between destination points cloud and source points cloud after transformation: {0}'.format(calc_err(x.T,y.T,T_transformed)))
 
     display(x, y, y_transformed)
 
@@ -84,3 +88,4 @@ if __name__ == '__main__':
     np.random.seed(0)
     solve()
     validate()
+    plt.show()

@@ -25,6 +25,14 @@ For detailed information about Assignment 2, check document [Asgmt2-README](./As
 
 For detailed information about Assignment 3, check document [Asgmt3-README](./Asgmt3/README.md)
 
+### 2.4. Assignment 4
+
+For detailed information about Assignment 4, check document [Asgmt3-README](./Asgmt4/README.md)
+
+### 2.5. Assignment 5
+
+For detailed information about Assignment 5, check document [Asgmt3-README](./Asgmt5/README.md)
+
 ## 3. Run the scripts
 
 ### Install the requirements
