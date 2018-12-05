@@ -99,7 +99,7 @@ def icp(A, B, maxits=100, tolerance=1e-10):
         # Step 1 - Matching: find the closest point as the corresponding point using the current alignment
         dist, indices = nearest_neighbor(src[:3,:].T, dst[:3,:].T)
 
-        # Step 2 - Updating: compute the alignment using the close-form solution as introduced previously
+        # Step 2 - Updating: compute the alignment using the close-form solution (here we use Absolute Orientation)
         T, _, _ = best_fit_transform(src[:3,:].T, dst[:3,indices].T)
         src = np.dot(T, src)
 

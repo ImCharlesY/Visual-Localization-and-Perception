@@ -30,8 +30,8 @@ def display(x, y, y_transformed):
     ax = fig.add_subplot(111, projection='3d')
 
     ax.scatter(x[0,:], x[1,:], x[2,:], c='r', marker='o')
-    ax.scatter(y[0,:], y[1,:], y[2,:], c='y', marker='*')
-    ax.scatter(y_transformed[0,:], y_transformed[1,:], y_transformed[2,:], c='b', marker='+')
+    ax.scatter(y[0,:], y[1,:], y[2,:], c='b', marker='*')
+    ax.scatter(y_transformed[0,:], y_transformed[1,:], y_transformed[2,:], c='y', marker='+')
 
     ax.set_xlabel('X Label')
     ax.set_ylabel('Y Label')
@@ -46,9 +46,10 @@ def solve():
     data = io.loadmat('./data/xy.mat')
     x, y = data['x'], data['y']
 
-    T, __ = icp(x.T, y.T)
+    T, dist = icp(x.T, y.T)
 
     print('The rigid body transformation: \n{0}'.format(T))
+    print('MSE between destination points cloud and source points cloud after transformation: {0}'.format(np.sum(dist) / dist.size))
 
     src = np.ones((4, x.shape[1]))
     src[:3,:] = np.copy(x)
@@ -67,6 +68,7 @@ def validate():
     data = io.loadmat('./result/solution.mat')
     T = data['T']   
     
+    np.random.seed(100)
     x = np.random.uniform(0,10,(3,1000))
     src = np.ones((4, 1000))
     src[:3,:] = np.copy(x)
@@ -85,7 +87,6 @@ def validate():
 
 if __name__ == '__main__':
 
-    np.random.seed(0)
     solve()
     validate()
     plt.show()
