@@ -27,11 +27,11 @@ For detailed information about Assignment 3, check document [Asgmt3-README](./As
 
 ### 2.4. Assignment 4
 
-For detailed information about Assignment 4, check document [Asgmt3-README](./Asgmt4/README.md)
+For detailed information about Assignment 4, check document [Asgmt4-README](./Asgmt4/README.md)
 
 ### 2.5. Assignment 5
 
-For detailed information about Assignment 5, check document [Asgmt3-README](./Asgmt5/README.md)
+For detailed information about Assignment 5, check document [Asgmt5-README](./Asgmt5/README.md)
 
 ## 3. Run the scripts
 
