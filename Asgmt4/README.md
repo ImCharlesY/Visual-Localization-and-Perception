@@ -1,6 +1,6 @@
 ﻿# Close Form Approach
  
- This is the fourth assignment of the lesson and it requires us to write a small program to solve a rotation matrix with close form approach such as Direct Linear Transformation method (DLT) and Absolute Orientation algorithm. We also compare them with Gauss-Newton Algorithm implemented in Assignment 2 by adding Gauss noise to the input vectors.
+ This is the fourth assignment of the lesson and it requires us to write a small program to solve a rotation matrix with close form approach such as Direct Linear Transformation method (DLT) and Absolute Orientation algorithm. We also compare them with Gauss-Newton Algorithm implemented in Assignment 3 by adding Gauss noise to the input vectors.
 
 ## 1. Requirements
 ### 1.1 General
