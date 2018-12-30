@@ -15,7 +15,7 @@ import cv2
 def fundamentalMat_estimation(pts1, pts2):
 
     # Find the Fundamental Matrix via RANSAC
-    F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.RANSAC, 3.0, 0.99)
+    F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_8POINT + cv2.RANSAC, 3.0, 0.99)
     mask = mask.ravel()
 
     # We select only inlier points
@@ -78,3 +78,12 @@ def find_common_keypoints(pts1, pts2):
         if idx.size:
             mask[i - 1] = idx[0]
     return mask
+
+def find_3Dto2D_point_correspondences(pts1, pts2, pts3D, pts_ref):
+
+    # Search common keypoints
+    mask = find_common_keypoints(pts_ref, pts1)
+
+    # Determine 3D-2D point correspondences on the third view
+    map_2Dto3D = {idx2D - 1:idx3D for idx2D, idx3D in enumerate(mask, 1) if idx3D != -1}
+    return pts2[list(map_2Dto3D.keys())], pts3D[list(map_2Dto3D.values())]

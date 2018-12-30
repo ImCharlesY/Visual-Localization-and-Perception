@@ -12,7 +12,7 @@ import os
 import numpy as np
 import cv2
 
-def match_keypoints_between_images(img1, img2, output_path = None):
+def match_keypoints_between_images(img1, img2, output_path = None, inlier_points_filename = 'inliers.npz'):
    
     # find the keypoints and descriptors with SIFT
     sift = cv2.xfeatures2d.SIFT_create()
@@ -47,6 +47,6 @@ def match_keypoints_between_images(img1, img2, output_path = None):
     if output_path is not None:
         if not os.path.exists(output_path):
             os.makedirs(output_path)
-        np.savez(os.path.join(output_path, 'inlier_pts.npz'), pts1=pts1, pts2=pts2)
+        np.savez(os.path.join(output_path, inlier_points_filename), pts1=pts1, pts2=pts2)
 
     return pts1, pts2

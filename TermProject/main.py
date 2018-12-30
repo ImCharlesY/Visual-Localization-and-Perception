@@ -27,8 +27,8 @@ parser.add_argument('--calibration', action = 'store_const', const = True,
                     help = 'Whether to calibrate camera. Your chessboard patterns should be stored in ./chessboard_pattern directory.')
 parser.add_argument('--undistortion', action = 'store_const', const = True, 
                     help = 'Whether to undistort raw images. Your raw images data should be stored in ./raw_images.')
-parser.add_argument('--raw-images', type = str, default = 'IMG', 
-                    help = 'The prefix of filenames of raw images. Default \'IMG\'')
+parser.add_argument('--raw-images', type = str, default = 'desk', 
+                    help = 'The prefix of filenames of raw images. Default \'desk\'')
 parser.add_argument('--resolution', type = int, default = [1280, 960], nargs = '*', 
                     help = 'Image Resolution. The program will resize all images to this specification. Default [1280,960]')
 args = parser.parse_args()
@@ -85,40 +85,50 @@ def main():
         print('\n'+'-'*50)
         print('Undistort raw images..')
         camera.undistort_images(raw_images_path, camera_matrix, distortion_vector, resolution = args.resolution, output_path = undistortion_result_path)
-    else:
-        if not (os.path.exists(undistortion_result_path) and os.path.isdir(undistortion_result_path) and os.listdir(undistortion_result_path)):
-            print('Cannot find undistorted images. Please perform undistortion first.')
-            return
+    
+    img1 = cv2.imread(os.path.join(undistortion_result_path, args.raw_images + '_01.jpg'),0)
+    img2 = cv2.imread(os.path.join(undistortion_result_path, args.raw_images + '_02.jpg'),0)
+    img3 = cv2.imread(os.path.join(undistortion_result_path, args.raw_images + '_03.jpg'),0)
+    if img1 is None or img2 is None or img3 is None:
+        print('Cannot find undistorted images. Please perform undistortion first.')
+        return 
+    img1 = cv2.resize(img1, tuple(args.resolution))
+    img2 = cv2.resize(img2, tuple(args.resolution))
+    img3 = cv2.resize(img3, tuple(args.resolution))
+
 
     '''------------------------ Key Points Matching ------------------------------------------------------'''
     print('\n'+'-'*50)
     print('Match key points between two images via SIFT..')
+
     print('Match image 1 and image 2..')
-    img1 = cv2.imread(os.path.join(undistortion_result_path, args.raw_images + '_01.jpg'),0)
-    img1 = cv2.resize(img1, tuple(args.resolution))
-    img2 = cv2.imread(os.path.join(undistortion_result_path, args.raw_images + '_02.jpg'),0)
-    img2 = cv2.resize(img2, tuple(args.resolution))
-    pts12, pts21 = feature.match_keypoints_between_images(img1, img2, output_path = keypoints_matching_result_path)
+    pts12, pts21 = feature.match_keypoints_between_images(img1, img2, 
+        output_path = keypoints_matching_result_path, inlier_points_filename = 'inliers_12.npz')
     print('{} matches found.'.format(len(pts12)))
+
+    print('Match image 1 and image 3..')
+    pts13, pts31 = feature.match_keypoints_between_images(img1, img3, 
+        output_path = keypoints_matching_result_path, inlier_points_filename = 'inliers_13.npz')
+    print('{} matches found.'.format(len(pts13)))
+
+    print('Match image 2 and image 3..')
+    pts23, pts32 = feature.match_keypoints_between_images(img2, img3, 
+        output_path = keypoints_matching_result_path, inlier_points_filename = 'inliers_23.npz')
+    print('{} matches found.'.format(len(pts23)))
 
 
     '''--------------------- Fundamental/Essential Matrix Estimation -------------------------------------'''
     print('\n'+'-'*50)
-    print('Calculate fundamental/essential matrix..')
+    print('Calculate fundamental/essential matrix between image 1 and image 2..')
     # Perform RANSAC on fundamental matrix estimation
     pts12, pts21, F = structure.fundamentalMat_estimation(pts12, pts21)
     # Calculate essential matrix
     E = np.dot(np.dot(camera_matrix.T, F), camera_matrix)
 
-    print('Fundamental Matrix between two views: \n{}\n'.format(F))
-    print('Essential Matrix between two views: \n{}\n'.format(E))
-    print('After fundamental matrix estimation, {} inlier matches found.'.format(len(pts12)))
+    print('Fundamental Matrix between two views (1 and 2): \n{}\n'.format(F))
+    print('Essential Matrix between two views (1 and 2): \n{}\n'.format(E))
+    print('After fundamental matrix estimation, {} inlier matches remain.'.format(len(pts12)))
 
-    # Save results
-    if not os.path.exists(view_matrice_path):
-        os.makedirs(view_matrice_path)
-    np.savez(os.path.join(view_matrice_path, 'fundamental_matrix.npz'), F=F)
-    np.savez(os.path.join(view_matrice_path, 'essential_matrix.npz'), E=E)
 
     '''--------------------- Triangulation --------------------------------------------'''
     print('\n'+'-'*50)
@@ -141,45 +151,27 @@ def main():
     pts3D /= pts3D[3]
     pts3D = pts3D.T[:,:3]
 
-    # Draw epilines and scatter reconstructed point cloud
-    # Generate a color list to instinguish different matches
-    colors = [tuple(np.random.randint(0,255,3).tolist()) for i in pts12]
-    annotated_img12, annotated_img21 = visualize.drawEpilines(img1, img2, pts12, pts21, F, colors)
-    cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG01.jpg'), annotated_img12)
-    cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG02.jpg'), annotated_img21)
-    visualize.scatter3DPoints(pts3D, colors, output_path = triangulation_path)
-    if disp:
-        annotated_img1 = cv2.resize(annotated_img1, (720, 480))
-        cv2.imshow('Annotated Image I', annotated_img1)
-        annotated_img2 = cv2.resize(annotated_img2, (720, 480))
-        cv2.imshow('Annotated Image II', annotated_img2)
-        plt.show()
+    if not os.path.exists(triangulation_path):
+        os.makedirs(triangulation_path)
+    np.savez(os.path.join(triangulation_path, 'reconstrcuted_3d_points.npz'), pts=pts3D)    
+
 
     '''--------------------- Pose Estimation ------------------------------------------'''
     print('\n'+'-'*50)
     print('Pose Estimation..')
+
     print('Match key points between two images via SIFT..')
     print('Match image 1 and image 3..')
-    img3 = cv2.imread(os.path.join(undistortion_result_path, args.raw_images + '_03.jpg'),0)
-    img3 = cv2.resize(img3, tuple(args.resolution))
-    pts13, pts31 = feature.match_keypoints_between_images(img1, img3, output_path = pose_estimation_path)
-    print('{} matches found.'.format(len(pts13)))
+    pts3_2D_1, pts3_3D_1 = structure.find_3Dto2D_point_correspondences(pts13, pts31, pts3D, pts12)
+    print('Find {} common matches.'.format(len(pts3_2D_1)))
 
-    pts13, pts31, F1 = structure.fundamentalMat_estimation(pts13, pts31)
-    annotated_img13, annotated_img31 = visualize.drawEpilines(img1, img3, pts13, pts31, F1, colors)
-    cv2.imwrite(os.path.join(pose_estimation_path, 'IMG01.jpg'), annotated_img13)
-    cv2.imwrite(os.path.join(pose_estimation_path, 'IMG03.jpg'), annotated_img31)
-
-    # Search pts13 that also appear in pts12
-    mask = structure.find_common_keypoints(pts12, pts13)
-    if (mask.ravel() == -1).all():
-        print('Cannot find common matches.')
-        return
+    print('Match image 2 and image 3..')
+    pts3_2D_2, pts3_3D_2 = structure.find_3Dto2D_point_correspondences(pts23, pts32, pts3D, pts21)
+    print('Find {} common matches.'.format(len(pts3_2D_2)))
 
     # Determine 3D-2D point correspondences on the third view
-    map_2Dto3D = {idx2D:idx3D for idx2D, idx3D in enumerate(mask, 1) if idx3D != -1}
-    pts3_2D = pts31[list(map_2Dto3D.keys())]
-    pts3_3D = pts3D[list(map_2Dto3D.values())]
+    pts3_2D = np.vstack([pts3_2D_1, pts3_2D_2])
+    pts3_3D = np.vstack([pts3_3D_1, pts3_3D_2])
 
     print('Common matches: {}'.format(len(pts3_3D)))
     if len(pts3_3D) < 8:
@@ -190,15 +182,53 @@ def main():
     __, rvec, t3, __ = cv2.solvePnPRansac(pts3_3D, pts3_2D, camera_matrix, None)
     R3 = cv2.Rodrigues(rvec)[0]
     P3 = np.dot(camera_matrix, np.hstack((R3, t3)))
-    print('Rotation matrix of the third view: \n{}'.format(R3))
-    print('Translation of the third view: \n{}'.format(t3))
     print('Projection matrix of the third view: \n{}'.format(P3))
 
+    if not os.path.exists(pose_estimation_path):
+        os.makedirs(pose_estimation_path)
+    np.savez(os.path.join(pose_estimation_path, 'camera_projection_matrix.npz'), P1=P1, P2=P2, P3=P3)    
+
+
+    '''--------------------- Bundle Adjustment ------------------------------------------'''
     print('\n'+'-'*50)
-    print('Pose Estimation..')    
+    print('Bundle Adjustment..')    
     print('Reprojection error on the first view : {}'.format(optimal.reprojection_error(pts3D, pts12, P1, None)))
     print('Reprojection error on the second view : {}'.format(optimal.reprojection_error(pts3D, pts21, P2, None)))
     print('Reprojection error on the third view : {}'.format(optimal.reprojection_error(pts3_3D, pts3_2D, P3, None)))
+
+    # TODO
+
+
+    '''--------------------- Visualization ------------------------------------------'''
+    # Generate a color list to instinguish different matches
+    colors = [tuple(np.random.randint(0,255,3).tolist()) for i in range(len(pts12))]
+    # Draw epilines and scatter reconstructed point cloud
+    annotated_img12, annotated_img21 = visualize.drawEpilines(img1, img2, pts12, pts21, F, colors)
+    annotated_img13, annotated_img31 = visualize.drawEpilines(img1, img3, pts13, pts31, F, colors)
+    annotated_img23, annotated_img32 = visualize.drawEpilines(img2, img3, pts23, pts32, F, colors)
+    if not os.path.exists(keypoints_matching_result_path):
+        os.makedirs(keypoints_matching_result_path)
+    cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG01_2.jpg'), annotated_img12)
+    cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG02_1.jpg'), annotated_img21)
+    cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG01_3.jpg'), annotated_img13)
+    cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG03_1.jpg'), annotated_img31)
+    cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG02_3.jpg'), annotated_img23)
+    cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG03_2.jpg'), annotated_img32)
+    visualize.scatter3DPoints(pts3D, colors, output_path = triangulation_path)
+    if disp:
+        annotated_img12 = cv2.resize(annotated_img12, (720, 480))
+        cv2.imshow('Annotated Image I - II', annotated_img12)
+        annotated_img21 = cv2.resize(annotated_img21, (720, 480))
+        cv2.imshow('Annotated Image II - I', annotated_img21)
+        annotated_img12 = cv2.resize(annotated_img13, (720, 480))
+        cv2.imshow('Annotated Image I - III', annotated_img13)
+        annotated_img21 = cv2.resize(annotated_img31, (720, 480))
+        cv2.imshow('Annotated Image III - I', annotated_img31)
+        annotated_img12 = cv2.resize(annotated_img23, (720, 480))
+        cv2.imshow('Annotated Image II - III', annotated_img23)
+        annotated_img21 = cv2.resize(annotated_img32, (720, 480))
+        cv2.imshow('Annotated Image III - II', annotated_img32)
+        plt.show()
 
 
 if __name__ == '__main__':
