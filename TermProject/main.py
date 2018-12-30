@@ -8,11 +8,9 @@ Requirements    : (Please check document: requirements.txt or use command "pip i
 Date            : 2018-12-24
 '''
 
-import os
-import argparse
-import numpy as np
+import os, shutil, argparse
 import cv2
-from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
 from matplotlib import pyplot as plt
 from utils import camera, feature, structure, visualize
 
@@ -20,15 +18,23 @@ from utils import camera, feature, structure, visualize
 plt.switch_backend('agg')
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--all', action = 'store_const', const =True, 
+                    help = 'Specify to run all procedures.')
 parser.add_argument('--calibration', action = 'store_const', const = True, 
                     help = 'Whether to calibrate camera. Your chessboard patterns should be stored in ./chessboard_pattern directory.')
 parser.add_argument('--undistortion', action = 'store_const', const = True, 
                     help = 'Whether to undistort raw images. Your raw images data should be stored in ./raw_images.')
-parser.add_argument('--raw-images', type = str, default = ['IMG01.jpg', 'IMG02.jpg', 'IMG03.jpg'], nargs = '*', metavar = 'filename',
-                    help = 'Filenames of raw images. Default [\'IMG01.jpg\', \'IMG02.jpg\', \'IMG03.jpg\']')
+parser.add_argument('--raw-images', type = str, default = 'IMG', 
+                    help = 'The prefix of filenames of raw images. Default \'IMG\'')
 parser.add_argument('--resolution', type = int, default = [1280, 960], nargs = '*', 
                     help = 'Image Resolution. The program will resize all images to this specification. Default [1280,960]')
 args = parser.parse_args()
+
+if args.all:
+    args.calibration = True
+    args.undistortion = True
+    print('Remove current cache..')
+    shutil.rmtree('.tmp')
 
 # Define resolution of input images
 assert len(args.resolution) == 2
@@ -41,12 +47,12 @@ camera_para_filename = 'camera_parameters.npz'
 raw_images_path = 'raw_images'
 undistortion_result_path = os.path.join('.tmp', 'undistorted_images')
 
-assert len(args.raw_images) == 3
 keypoints_matching_result_path = os.path.join('.tmp', 'keypoints_matching_result')
 
 view_matrice_path = os.path.join('.tmp', 'view_matrice')
 
 triangulation_path = os.path.join('.tmp', 'triangulation')
+
 
 def main():
 
@@ -69,7 +75,7 @@ def main():
     print('Reprojection Error: {}'.format(reprojection_error))
 
 
-    '''------------------------ Preprocess Raw Image ------------------------------------------------------'''
+    '''------------------------ Undistort Raw Image ------------------------------------------------------'''
     if args.undistortion:
         print('\n'+'-'*50)
         print('Undistort raw images..')
@@ -82,9 +88,9 @@ def main():
     '''------------------------ Key Points Matching ------------------------------------------------------'''
     print('\n'+'-'*50)
     print('Match key points between two images via SIFT..')
-    img1 = cv2.imread(os.path.join(undistortion_result_path, args.raw_images[0]),0)  # queryimage
+    img1 = cv2.imread(os.path.join(undistortion_result_path, args.raw_images + '_01.jpg'),0)  # queryimage
     img1 = cv2.resize(img1, tuple(args.resolution))
-    img2 = cv2.imread(os.path.join(undistortion_result_path, args.raw_images[1]),0)  # trainimage
+    img2 = cv2.imread(os.path.join(undistortion_result_path, args.raw_images + '_02.jpg'),0)  # trainimage
     img2 = cv2.resize(img2, tuple(args.resolution))
     pts1, pts2 = feature.match_keypoints_between_images(img1, img2, output_path = keypoints_matching_result_path)
     print('{} matches found.'.format(len(pts1)))
@@ -108,12 +114,6 @@ def main():
     np.savez(os.path.join(view_matrice_path, 'fundamental_matrix.npz'), F=F)
     np.savez(os.path.join(view_matrice_path, 'essential_matrix.npz'), E=E)
 
-    # Draw epilines
-    annotated_img1, annotated_img2 = visualize.drawEpilines(img1, img2, pts1, pts2, F)
-    cv2.imwrite(os.path.join(keypoints_matching_result_path, args.raw_images[0]), annotated_img1)
-    cv2.imwrite(os.path.join(keypoints_matching_result_path, args.raw_images[1]), annotated_img2)
-
-
     '''--------------------- Triangulation --------------------------------------------'''
     print('\n'+'-'*50)
     print('Triangulation..')
@@ -132,18 +132,15 @@ def main():
     # ATTENTION: all input data should be of float type or it will raise BUS ERROR exception
     pts4D = cv2.triangulatePoints(P1, P2, pts1.T, pts2.T)
     pts4D /= pts4D[3]
+    pts4D = pts4D.T
 
-    fig = plt.figure()
-    fig.suptitle('3D reconstructed', fontsize=16)
-    ax = fig.gca(projection='3d')
-    ax.scatter(pts4D[0,:], pts4D[1,:], pts4D[2,:], c='r', marker='o')
-    ax.set_xlabel('x axis')
-    ax.set_ylabel('y axis')
-    ax.set_zlabel('z axis')
-
-    if not os.path.exists(triangulation_path):
-        os.makedirs(triangulation_path)
-    plt.savefig(os.path.join(triangulation_path, '3D_pts_cloud.svg'), bbox_inches = 'tight', format = 'svg') 
+    # Draw epilines and scatter reconstructed point cloud
+    # Generate a color list to instinguish different matches
+    colors = [tuple(np.random.randint(0,255,3).tolist()) for i in pts1]
+    annotated_img1, annotated_img2 = visualize.drawEpilines(img1, img2, pts1, pts2, F, colors)
+    cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG01.jpg'), annotated_img1)
+    cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG02.jpg'), annotated_img2)
+    visualize.scatter3DPoints(pts4D, colors, output_path = triangulation_path)
 
 
 if __name__ == '__main__':

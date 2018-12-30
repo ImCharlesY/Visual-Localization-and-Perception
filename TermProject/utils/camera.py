@@ -111,4 +111,4 @@ def undistort_images(images_path, camera_matrix, distortion_vector, resolution =
         dst = dst[y:y+h, x:x+w]
 
         if output_path is not None:
-            cv2.imwrite(os.path.join(output_path, fname.split(os.sep)[-1]), dst)
+            cv2.imwrite(os.path.join(output_path, fname.split(os.sep)[-1].split('.')[0] + '.jpg'), dst)

@@ -33,10 +33,8 @@ def fundamentalMat_estimation(pts1, pts2):
     return pts1, pts2, F
 
 def compute_reprojection_from_essential(E):
-    """ Compute the second camera matrix (assuming P1 = [I 0])
-        from an essential matrix. E = [t]R
-    :returns: list of 4 possible camera matrices.
-    """
+
+    # Perform SVD
     U, __, VT = np.linalg.svd(E)
 
     # Ensure rotation matrix are right-handed with positive determinant
