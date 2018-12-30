@@ -69,3 +69,12 @@ def find_correct_reprojection(P2s, camera_matrix, P1, pt1, pt2):
             ind = i
 
     return np.dot(camera_matrix, P2s[ind])
+
+def find_common_keypoints(pts1, pts2):
+
+    mask = -np.ones((len(pts2))).astype('int')
+    for i, row in enumerate(pts2, 1):
+        idx = np.where((pts1 == row).all(1))[0]
+        if idx.size:
+            mask[i - 1] = idx[0]
+    return mask
