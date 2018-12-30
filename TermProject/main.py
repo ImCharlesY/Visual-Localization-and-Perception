@@ -1,18 +1,18 @@
 #!/usr/bin/env
 # -*- coding: utf-8 -*-
 '''
-Script Name     : Feature Points Matching
+Script Name     : main
 Author          : Charles Young
 Python Version  : Python 3.6.3
 Requirements    : (Please check document: requirements.txt or use command "pip install -r requirements.txt")
-Date            : 2018-12-24
+Date            : 2018-12-30
 '''
 
 import os, shutil, argparse
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
-from utils import camera, feature, structure, visualize
+from utils import camera, feature, structure, visualize, optimal
 
 # Check display environment
 disp = True
@@ -129,9 +129,10 @@ def main():
     print('Projection matrix of the first view: \n{}\n'.format(P1))
 
     # Calculate projection matrix of the second view
-    P2s = structure.compute_reprojection_from_essential(E)
+    # First calculate extrinsic matrix ([R|t]) from essential matrix
+    P2s = structure.compute_extrinsic_from_essential(E)
     # We will get 4 solutions, so we need to find the correct one
-    P2 = structure.find_correct_reprojection(P2s, camera_matrix, P1, pts12.T[:,0], pts21.T[:,0])
+    P2 = structure.find_correct_projection(P2s, camera_matrix, P1, pts12.T[:,0], pts21.T[:,0])
     print('Projection matrix of the second view: \n{}\n'.format(P2))
 
     # Triangulation
@@ -186,10 +187,19 @@ def main():
         return
 
     # Finds an object pose from 3D-2D point correspondences using the RANSAC scheme.
-    ret, rvec, t3, __ = cv2.solvePnPRansac(pts3_3D, pts3_2D, camera_matrix, None)
+    __, rvec, t3, __ = cv2.solvePnPRansac(pts3_3D, pts3_2D, camera_matrix, None)
     R3 = cv2.Rodrigues(rvec)[0]
-    print('Rotation matrix: \n{}'.format(R3))
-    print('Translation: \n{}'.format(t3))
+    P3 = np.dot(camera_matrix, np.hstack((R3, t3)))
+    print('Rotation matrix of the third view: \n{}'.format(R3))
+    print('Translation of the third view: \n{}'.format(t3))
+    print('Projection matrix of the third view: \n{}'.format(P3))
+
+    print('\n'+'-'*50)
+    print('Pose Estimation..')    
+    print('Reprojection error on the first view : {}'.format(optimal.reprojection_error(pts3D, pts12, P1, None)))
+    print('Reprojection error on the second view : {}'.format(optimal.reprojection_error(pts3D, pts21, P2, None)))
+    print('Reprojection error on the third view : {}'.format(optimal.reprojection_error(pts3_3D, pts3_2D, P3, None)))
+
 
 if __name__ == '__main__':
     main()

@@ -32,7 +32,7 @@ def fundamentalMat_estimation(pts1, pts2):
 
     return pts1, pts2, F
 
-def compute_reprojection_from_essential(E):
+def compute_extrinsic_from_essential(E):
 
     # Perform SVD
     U, __, VT = np.linalg.svd(E)
@@ -41,7 +41,7 @@ def compute_reprojection_from_essential(E):
     if np.linalg.det(np.dot(U, VT)) < 0:
         VT = -VT
 
-    # create 4 possible camera matrices (Hartley p 258)
+    # create 4 possible extrinsic matrices (Hartley p 258)
     W = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
     skew_t = np.dot(np.dot(U, [[0,1,0],[-1,0,0],[0,0,0]]), U.T)
     t = np.array([[-skew_t[1,2],skew_t[0,2],-skew_t[0,1]]]).T
@@ -51,7 +51,7 @@ def compute_reprojection_from_essential(E):
             np.hstack((np.dot(U, np.dot(W.T, VT)), -t))]
     return P2s
 
-def find_correct_reprojection(P2s, camera_matrix, P1, pt1, pt2):
+def find_correct_projection(P2s, camera_matrix, P1, pt1, pt2):
 
     # Find the correct projection matrix
     ind = -1
