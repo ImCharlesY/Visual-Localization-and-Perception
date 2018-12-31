@@ -75,7 +75,7 @@ def camera_calibration(input_pattern_path, resolution = [1280, 960], number_ches
 
     if output_images_path is not None:
         np.savez(os.path.join(output_images_path, output_camera_para_filename), 
-            camera_matrix = camera_matrix, distortion_vector = distortion_vector, reprojection_error = reprojection_error) 
+            intrinsic_matrix = camera_matrix, distortion_vector = distortion_vector, reprojection_error = reprojection_error) 
 
     return camera_matrix, distortion_vector, reprojection_error
 

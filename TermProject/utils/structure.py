@@ -41,7 +41,7 @@ def compute_extrinsic_from_essential(E):
     if np.linalg.det(np.dot(U, VT)) < 0:
         VT = -VT
 
-    # create 4 possible extrinsic matrices (Hartley p 258)
+    # create 4 possible extrinsic matrice (Hartley p 258)
     W = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
     skew_t = np.dot(np.dot(U, [[0,1,0],[-1,0,0],[0,0,0]]), U.T)
     t = np.array([[-skew_t[1,2],skew_t[0,2],-skew_t[0,1]]]).T
@@ -53,7 +53,7 @@ def compute_extrinsic_from_essential(E):
 
 def find_correct_projection(P2s, camera_matrix, P1, pt1, pt2):
 
-    # Find the correct projection matrix
+    # Find the correct extrinsic matrix
     ind = -1
     for i, P2 in enumerate(P2s):
         P2 = np.dot(camera_matrix, P2)
