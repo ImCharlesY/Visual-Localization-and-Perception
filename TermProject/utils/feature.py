@@ -37,7 +37,7 @@ def match_keypoints_between_images(img1, img2, output_path = None, inlier_points
     pts2 = np.asarray([kp2[m.trainIdx].pt for m in good]).astype('float64')
 
     # Constrain matches to fit homography
-    __, mask = cv2.findHomography(pts1, pts2, cv2.RANSAC, 100.0)
+    __, mask = cv2.findHomography(pts1, pts2, cv2.RANSAC, 10.0)
     mask = mask.ravel()
 
     # We select only inlier points

@@ -106,16 +106,19 @@ def main():
     print('Match image 1 and image 2..')
     pts12, pts21 = feature.match_keypoints_between_images(img1, img2, 
         output_path = keypoints_matching_result_path, inlier_points_filename = 'inliers_12.npz')
+    pts12, pts21, __ = structure.fundamentalMat_estimation(pts12, pts21)
     print('{} matches found.'.format(len(pts12)))
 
     print('Match image 1 and image 3..')
     pts13, pts31 = feature.match_keypoints_between_images(img1, img3, 
         output_path = keypoints_matching_result_path, inlier_points_filename = 'inliers_13.npz')
+    pts13, pts31, __ = structure.fundamentalMat_estimation(pts13, pts31)
     print('{} matches found.'.format(len(pts13)))
 
     print('Match image 2 and image 3..')
     pts23, pts32 = feature.match_keypoints_between_images(img2, img3, 
         output_path = keypoints_matching_result_path, inlier_points_filename = 'inliers_23.npz')
+    pts23, pts32, __ = structure.fundamentalMat_estimation(pts23, pts32)
     print('{} matches found.'.format(len(pts23)))
 
 
@@ -123,13 +126,13 @@ def main():
     print('\n'+'-'*50)
     print('Calculate fundamental/essential matrix between image 1 and image 2..')
     # Perform RANSAC on fundamental matrix estimation
-    pts12, pts21, F = structure.fundamentalMat_estimation(pts12, pts21)
+    __, __, F = structure.fundamentalMat_estimation(pts12, pts21)
     # Calculate essential matrix
     E = np.dot(np.dot(intrinsic_matrix.T, F), intrinsic_matrix)
 
     print('Fundamental Matrix between two views (1 and 2): \n{}\n'.format(F))
     print('Essential Matrix between two views (1 and 2): \n{}\n'.format(E))
-    print('After fundamental matrix estimation, {} inlier matches remain.'.format(len(pts12)))
+    # print('After fundamental matrix estimation, {} inlier matches remain.'.format(len(pts12)))
 
 
     '''--------------------- Triangulation --------------------------------------------'''

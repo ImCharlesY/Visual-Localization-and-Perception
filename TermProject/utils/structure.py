@@ -11,12 +11,16 @@ Date            : 2018-12-30
 import os
 import numpy as np
 import cv2
+from . import m_method
 
 def fundamentalMat_estimation(pts1, pts2):
 
     # Find the Fundamental Matrix via RANSAC
-    F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_8POINT + cv2.RANSAC, 3.0, 0.99)
+    F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_8POINT + cv2.RANSAC, 1.0, 0.99)
     mask = mask.ravel()
+
+    # Test custom RANSAC
+    # F, mask = m_method.m_findFundamentalMat(pts1, pts2, cv2.FM_8POINT + cv2.RANSAC, 1.0, 0.99)
 
     # We select only inlier points
     pts1 = pts1[mask==1]
