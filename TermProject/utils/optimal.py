@@ -59,27 +59,27 @@ def calculate_projection_from_pose(poses, intrinsic_matrix):
 
 
 class bundle_adjustment:
-    """Based on tutorial on https://scipy-cookbook.readthedocs.io/items/bundle_adjustment.html"""
+    """Implementation of the bundle adjustment algorithm.
+    Based on tutorial on https://scipy-cookbook.readthedocs.io/items/bundle_adjustment.html
+    """
 
     def __init__(self, camera_params, points_3d, points_2d, camera_indices, point_indices, intrinsic_matrix):
         """Parameters:
-            camera_params with shape (n_cameras, 6) 
-                contains initial estimates of parameters for all cameras. 
-                    First 3 components in each row form a rotation vector (https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula), 
-                    next 3 components form a translation vector.
-
-            points_3d with shape (n_points, 3) 
-                contains initial estimates of point coordinates in the world frame.
-
-            camera_ind with shape (n_observations,) 
-                contains indices of cameras (from 0 to n_cameras - 1) involved in each observation.
-
-            point_ind with shape (n_observations,) 
-                contatins indices of points (from 0 to n_points - 1) involved in each observation.
-
-            points_2d with shape (n_observations, 2) 
-                contains measured 2-D coordinates of points projected on images in each observations.
+        ----------
+        camera_params with shape (n_cameras, 6) 
+            contains initial estimates of parameters for all cameras. 
+                First 3 components in each row form a rotation vector (https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula), 
+                next 3 components form a translation vector.
+        points_3d with shape (n_points, 3) 
+            contains initial estimates of point coordinates in the world frame.
+        camera_ind with shape (n_observations,) 
+            contains indices of cameras (from 0 to n_cameras - 1) involved in each observation.
+        point_ind with shape (n_observations,) 
+            contatins indices of points (from 0 to n_points - 1) involved in each observation.
+        points_2d with shape (n_observations, 2) 
+            contains measured 2-D coordinates of points projected on images in each observations.
         """
+
         self.camera_params = camera_params
         self.points_3d = points_3d
         self.points_2d = points_2d
@@ -91,7 +91,8 @@ class bundle_adjustment:
 
 
     def project(self, points, camera_params, intrinsic_matrix):
-        """Convert 3-D points to 2-D by projecting onto images."""
+        """Convert 3-D points to 2-D by projecting onto images.
+        """
 
         points_proj = np.zeros((points.shape[0], 2), dtype = points.dtype)
         for i, (point, camera_param) in enumerate(zip(points, camera_params), 1):
@@ -105,6 +106,7 @@ class bundle_adjustment:
         """Compute residuals.
         `params` contains camera parameters and 3-D coordinates.
         """
+
         camera_params = params[:n_cameras * 6].reshape((n_cameras, 6))
         points_3d = params[n_cameras * 6:].reshape((n_points, 3))
         points_proj = self.project(points_3d[point_indices], camera_params[camera_indices], intrinsic_matrix)
@@ -112,6 +114,9 @@ class bundle_adjustment:
 
 
     def bundle_adjustment_sparsity(self, n_cameras, n_points, camera_indices, point_indices):
+        """ Construct Jacobian sparsity structure (i. e. mark elements which are known to be non-zero)
+        """
+
         m = camera_indices.size * 2
         n = n_cameras * 6 + n_points * 3
         A = lil_matrix((m, n), dtype=int)
@@ -129,9 +134,9 @@ class bundle_adjustment:
 
 
     def extract_params(self, params, n_cameras, n_points):
+        """Retrieve camera parameters and 3-D coordinates.
         """
-        Retrieve camera parameters and 3-D coordinates.
-        """
+
         camera_params = params[:n_cameras * 6].reshape((n_cameras, 6))
         points_3d = params[n_cameras * 6:].reshape((n_points, 3))
 
@@ -139,8 +144,8 @@ class bundle_adjustment:
 
 
     def optimize(self):
-        """ Returns the bundle adjusted parameters, in this case the optimized
-         rotation and translation vectors. """
+        """ Returns the bundle adjusted parameters, in this case the optimized rotation and translation vectors. 
+        """
 
         n_cameras = self.camera_params.shape[0]
         n_points = self.points_3d.shape[0]
