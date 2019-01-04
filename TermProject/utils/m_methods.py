@@ -1,7 +1,7 @@
 #!/usr/bin/env
 # -*- coding: utf-8 -*-
 '''
-Script Name     : m_method
+Script Name     : m_methods
 Author          : Charles Young
 Python Version  : Python 3.6.3
 Requirements    : (Please check document: requirements.txt or use command "pip install -r requirements.txt")
@@ -10,112 +10,6 @@ Date            : 2018-01-03
 
 import cv2
 import numpy as np
-
-def eight_point_algorithm(pts1, pts2):
-    """Performs 8-point algorithm.
-    Parameters
-    ----------
-    pts1 : ndarray Nx3, dtype = float
-        contains points in the reference view in homogeneous space.
-    pts2 : ndarray Nx3, dtype = float
-        contains points in the other view in homogeneous space.
-    Return
-    ------
-    F : ndarray 3x3, dtype = float
-        output fundamental matrix.
-    """
-    
-    if pts1.shape[0] != pts1.shape[0]:
-        raise ValueError("Number of points don't match.")
-
-    # [x'*x, x'*y, x'*z, y'*x, y'*y, y'*z, z'*x, z'*y, z'*z]
-    A = np.vstack([
-        pts1[:,0]*pts2[:,0], pts1[:,0]*pts2[:,1], pts1[:,0]*pts2[:,2], 
-        pts1[:,1]*pts2[:,0], pts1[:,1]*pts2[:,1], pts1[:,1]*pts2[:,2], 
-        pts1[:,2]*pts2[:,0], pts1[:,2]*pts2[:,1], pts1[:,2]*pts2[:,2] ]).T
-
-    # compute linear least square solution
-    __, S, VT = np.linalg.svd(A)
-    # solution can be obtained from the vector corresponds to the minimum singular value
-    F = VT[-1].reshape(3,3)
-        
-    # constrain F : making rank 2 by zeroing out last singular value
-    U, S, VT = np.linalg.svd(F)
-    S[-1] = 0
-    F = np.dot(np.dot(U, np.diag(S)), VT)
-    
-    return F / F[2,2]
-
-
-def find_fundamental_matrix(points):
-    """Computes the fundamental matrix using 8-point algorithm.
-    Parameters
-    ----------
-    points : ndarray Nx4, dtype = float
-        contains a set of observed data points. 
-        points[:,0:2] contains points in the reference view.
-        points[:,2:4] contains points in the other view.
-    Return
-    ------
-    F : ndarray 3x3, dtype = float
-        output fundamental matrix.
-    """
-
-    pts1 = np.hstack([points[:,:2], np.ones(len(points)).reshape(-1,1)])
-    pts2 = np.hstack([points[:,2:], np.ones(len(points)).reshape(-1,1)])
-
-    # calculate the normalizing transformations for each of the point sets:
-    # after the transformation each set will have the mass center at the coordinate origin
-    # and the average distance from the origin will be ~sqrt(2).
-    mean1 = np.mean(pts1[:,:2], axis = 0)
-    S1 = np.sqrt(2) / np.std(pts1[:,:2])
-    T1 = np.array([[S1,0,-S1*mean1[0]], [0,S1,-S1*mean1[1]], [0,0,1]])
-    pts1 = np.dot(T1,pts1.T).T
-    
-    mean2 = np.mean(pts2[:,:2], axis = 0)
-    S2 = np.sqrt(2) / np.std(pts2[:,:2])
-    T2 = np.array([[S2,0,-S2*mean2[0]], [0,S2,-S2*mean2[1]], [0,0,1]])
-    pts2 = np.dot(T2,pts2.T).T
-
-    F = eight_point_algorithm(pts1, pts2)
-
-    # reverse normalization
-    return np.dot(np.dot(T1.T, F), T2)
-
-
-def compute_error(mat, points):
-    """Computes the fundamental matrix using 8-point algorithm.
-    Reference : 
-        https://github.com/opencv/opencv/blob/8f15a609afc3c08ea0a5561ca26f1cf182414ca2/modules/calib3d/src/fundam.cpp
-    Parameters
-    ----------
-    mat : ndarray 3x3, dtype = float
-        the fundamental matrix.
-    points : ndarray Nx4, dtype = float
-        contains a set of observed data points. 
-        points[:,0:2] contains points in the reference view.
-        points[:,2:4] contains points in the other view.
-    Return
-    ------
-    error : ndarray (N,), dtype = float
-        contains the distance from points to their epipolar lines.
-    """
-
-    pts1 = np.hstack([points[:,:2], np.ones(len(points)).reshape(-1,1)])
-    pts2 = np.hstack([points[:,2:], np.ones(len(points)).reshape(-1,1)])
-
-    m2 = np.dot(mat, pts1.T)
-    s2 = 1 / (m2[0]**2 + m2[1]**2)
-    d2 = (pts2.T * m2).sum(axis = 0)
-    err2 = d2**2 * s2
-
-    m1 = np.dot(mat, pts2.T)
-    s1 = 1 / (m1[0]**2 + m1[1]**2)
-    d1 = (pts1.T * m1).sum(axis = 0)
-    err1 = d1**2 * s1
-
-    return np.where(err1 > err2, err1, err2)
-
 
 def m_ransac(fit_model, validate_model, X, num_samples, max_iter = -1, thresh = 1.0, ratio_of_inliers = 0.99):
     """General implementation of the RANSAC method
@@ -204,6 +98,115 @@ def m_ransac(fit_model, validate_model, X, num_samples, max_iter = -1, thresh = 
     return best_model is not None, best_model, best_mask
 
 
+
+""" ---------------------------------- Fundamental Matrix Estimation ----------------------------------------- """
+
+def eight_point_algorithm(pts1, pts2):
+    """Performs 8-point algorithm.
+    Parameters
+    ----------
+    pts1 : ndarray Nx3, dtype = float
+        contains points in the reference view in homogeneous space.
+    pts2 : ndarray Nx3, dtype = float
+        contains points in the other view in homogeneous space.
+    Return
+    ------
+    F : ndarray 3x3, dtype = float
+        output fundamental matrix.
+    """
+    
+    if pts1.shape[0] != pts1.shape[0]:
+        raise ValueError("Number of points don't match.")
+
+    # [x'*x, x'*y, x'*z, y'*x, y'*y, y'*z, z'*x, z'*y, z'*z]
+    A = np.vstack([
+        pts1[:,0]*pts2[:,0], pts1[:,0]*pts2[:,1], pts1[:,0]*pts2[:,2], 
+        pts1[:,1]*pts2[:,0], pts1[:,1]*pts2[:,1], pts1[:,1]*pts2[:,2], 
+        pts1[:,2]*pts2[:,0], pts1[:,2]*pts2[:,1], pts1[:,2]*pts2[:,2] ]).T
+
+    # compute linear least square solution
+    __, S, VT = np.linalg.svd(A)
+    # solution can be obtained from the vector corresponds to the minimum singular value
+    F = VT[-1].reshape(3,3)
+        
+    # constrain F : making rank 2 by zeroing out last singular value
+    U, S, VT = np.linalg.svd(F)
+    S[-1] = 0
+    F = np.dot(np.dot(U, np.diag(S)), VT)
+    
+    return F / F[2,2]
+
+
+def find_fundamental_matrix(points):
+    """Computes the fundamental matrix using 8-point algorithm.
+    Parameters
+    ----------
+    points : ndarray Nx4, dtype = float
+        contains a set of observed data points. 
+        points[:,0:2] contains points in the reference view.
+        points[:,2:4] contains points in the other view.
+    Return
+    ------
+    F : ndarray 3x3, dtype = float
+        output fundamental matrix.
+    """
+
+    pts1 = np.hstack([points[:,:2], np.ones(len(points)).reshape(-1,1)])
+    pts2 = np.hstack([points[:,2:], np.ones(len(points)).reshape(-1,1)])
+
+    # calculate the normalizing transformations for each of the point sets:
+    # after the transformation each set will have the mass center at the coordinate origin
+    # and the average distance from the origin will be ~sqrt(2).
+    mean1 = np.mean(pts1[:,:2], axis = 0)
+    S1 = np.sqrt(2) / np.std(pts1[:,:2])
+    T1 = np.array([[S1,0,-S1*mean1[0]], [0,S1,-S1*mean1[1]], [0,0,1]])
+    pts1 = np.dot(T1,pts1.T).T
+    
+    mean2 = np.mean(pts2[:,:2], axis = 0)
+    S2 = np.sqrt(2) / np.std(pts2[:,:2])
+    T2 = np.array([[S2,0,-S2*mean2[0]], [0,S2,-S2*mean2[1]], [0,0,1]])
+    pts2 = np.dot(T2,pts2.T).T
+
+    F = eight_point_algorithm(pts1, pts2)
+
+    # reverse normalization
+    return np.dot(np.dot(T1.T, F), T2)
+
+
+def compute_fundamental_matrix_error(mat, points):
+    """Computes the fundamental matrix using 8-point algorithm.
+    Reference : 
+        https://github.com/opencv/opencv/blob/8f15a609afc3c08ea0a5561ca26f1cf182414ca2/modules/calib3d/src/fundam.cpp
+    Parameters
+    ----------
+    mat : ndarray 3x3, dtype = float
+        the fundamental matrix.
+    points : ndarray Nx4, dtype = float
+        contains a set of observed data points. 
+        points[:,0:2] contains points in the reference view.
+        points[:,2:4] contains points in the other view.
+    Return
+    ------
+    error : ndarray (N,), dtype = float
+        contains the distance from points to their epipolar lines.
+    """
+
+    pts1 = np.hstack([points[:,:2], np.ones(len(points)).reshape(-1,1)])
+    pts2 = np.hstack([points[:,2:], np.ones(len(points)).reshape(-1,1)])
+
+    m2 = np.dot(mat, pts1.T)
+    s2 = 1 / (m2[0]**2 + m2[1]**2)
+    d2 = (pts2.T * m2).sum(axis = 0)
+    err2 = d2**2 * s2
+
+    m1 = np.dot(mat, pts2.T)
+    s1 = 1 / (m1[0]**2 + m1[1]**2)
+    d1 = (pts1.T * m1).sum(axis = 0)
+    err1 = d1**2 * s1
+
+    return np.where(err1 > err2, err1, err2)
+
+
 def m_findFundamentalMat(pts1, pts2, method, thresh = 10000.0, ratio_of_inliers = 0.99):
     """Commpute the fundamental matrix using the 8-point algorithm or RANSAC + 8-point algorithm.
     Parameters
@@ -235,12 +238,12 @@ def m_findFundamentalMat(pts1, pts2, method, thresh = 10000.0, ratio_of_inliers 
     # RANSAC + 8-Point
     if method == cv2.FM_8POINT + cv2.RANSAC or method == cv2.RANSAC:
         np.random.seed(0)
-        __, F, mask = m_ransac(find_fundamental_matrix, compute_error, 
+        __, F, mask = m_ransac(find_fundamental_matrix, compute_fundamental_matrix_error, 
             np.hstack([pts1, pts2]), num_samples = 8, thresh = thresh, ratio_of_inliers = ratio_of_inliers)
     # 8-Point only
     elif method == cv2.FM_8POINT:
         np.random.seed(0)
-        __, F, __ = m_ransac(find_fundamental_matrix, compute_error, 
+        __, F, __ = m_ransac(find_fundamental_matrix, compute_fundamental_matrix_error, 
             np.hstack([pts1, pts2]), num_samples = len(pts1), max_iter = 1)   
         mask = np.ones(len(pts1))    
     else:
@@ -249,3 +252,45 @@ def m_findFundamentalMat(pts1, pts2, method, thresh = 10000.0, ratio_of_inliers 
     np.random.set_state(st0)
     
     return F, mask
+
+""" ---------------------------------- PnP Algorithm ----------------------------------------- """
+
+def m_solvePnP(objectPoints, imagePoints, cameraMatrix, distCoeffs, thresh = 10000.0, ratio_of_inliers = 0.99):
+    """The function estimates an object pose given a set of object points, their corresponding image projections, 
+    as well as the camera intrinsic matrix and the distortion coefficients. This function finds such a pose that 
+    minimizes reprojection error, that is, the sum of squared distances between the observed projections imagePoints 
+    and the projected (using cv2.projectPoints()) objectPoints. The use of RANSAC makes the function resistant to outliers. 
+
+    Parameters
+    ----------
+    objectPoints : ndarray Nx3, dtype = float
+        contains object points in the object coordinate space, where N is the number of points.
+    imagePoints : ndarray Nx2, dtype = float
+        contains corresponding image points, where N is the number of points.
+    cameraMatrix : ndarray 3x3, dtype = float
+        input camera intrinsic matrix.
+    distCoeffs : ndarray (k,), dtype = float
+        input vector of distortion coefficients (k_1, k_2, p_1, p_2[, k_3[, k_4, k_5, k_6]]) of 4, 5, or 8 elements. 
+        If the vector is None/empty, the zero distortion coefficients are assumed.
+    thresh : float
+        parameter used for RANSAC. It is the maximum distance from a point to an epipolar line in pixels, 
+        beyond which the point is considered an outlier and is not used for computing the final fundamental 
+        matrix.
+    ratio_of_inliers : float
+        parameter used for the RANSAC. When the ratio of inliers exceeds this value, the iteration will stop.
+    Return
+    ------
+    retval : boolen
+        whether we find the pose.
+    rvec : ndarray (3,), dtype = float
+        output rotation vector.
+    tvec : ndarray (3,), dtype = float
+        output translation vector.
+    inliers : ndarray (M,), dtype = int
+        output vector that contains indices of inliers in objectPoints and imagePoints, where M is the 
+        number of inliers.
+    """
+
+    # TODO
+    
+    return cv2.solvePnPRansac(objectPoints, imagePoints, cameraMatrix, distCoeffs)

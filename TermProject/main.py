@@ -29,8 +29,8 @@ parser.add_argument('--undistortion', action = 'store_const', const = True,
                     help = 'Whether to undistort raw images. Your raw images data should be stored in ./raw_images.')
 parser.add_argument('--custom', action = 'store_const', const = True, 
                     help = 'Whether to use custom methods.')
-parser.add_argument('--raw-images', type = str, default = 'desk', 
-                    help = 'The prefix of filenames of raw images. Default \'desk\'')
+parser.add_argument('--image-prefix', type = str, default = 'gate', 
+                    help = 'The prefix of filenames of raw images. Default \'gate\'')
 parser.add_argument('--resolution', type = int, default = [1280, 960], nargs = '*', 
                     help = 'Image Resolution. The program will resize all images to this specification. Default [1280,960]')
 args = parser.parse_args()
@@ -46,8 +46,10 @@ assert len(args.resolution) == 2
 
 # Switch methods
 findFundamentalMat = lambda pts1, pts2, method : cv2.findFundamentalMat(pts1, pts2, method, 1.0, 0.99)
+solvePnPRansac = lambda objectPoints, imagePoints, cameraMatrix, distCoeffs : cv2.solvePnPRansac(objectPoints, imagePoints, cameraMatrix, distCoeffs)
 if args.custom:
     findFundamentalMat = lambda pts1, pts2, method : m_methods.m_findFundamentalMat(pts1, pts2, method, 10000.0, 0.99)
+    # solvePnPRansac = lambda objectPoints, imagePoints, cameraMatrix, distCoeffs : m_methods.m_solvePnP(objectPoints, imagePoints, cameraMatrix, distCoeffs)
 
 # Define all paths
 chessboard_pattern_path = 'chessboard_pattern'
@@ -96,9 +98,9 @@ def main():
         print('Undistort raw images..')
         camera.undistort_images(raw_images_path, intrinsic_matrix, distortion_vector, resolution = args.resolution, output_path = undistortion_result_path)
     
-    img1 = cv2.imread(os.path.join(undistortion_result_path, args.raw_images + '_01.jpg'),0)
-    img2 = cv2.imread(os.path.join(undistortion_result_path, args.raw_images + '_02.jpg'),0)
-    img3 = cv2.imread(os.path.join(undistortion_result_path, args.raw_images + '_03.jpg'),0)
+    img1 = cv2.imread(os.path.join(undistortion_result_path, args.image_prefix + '_01.jpg'),0)
+    img2 = cv2.imread(os.path.join(undistortion_result_path, args.image_prefix + '_02.jpg'),0)
+    img3 = cv2.imread(os.path.join(undistortion_result_path, args.image_prefix + '_03.jpg'),0)
     if img1 is None or img2 is None or img3 is None:
         print('Cannot find undistorted images. Please perform undistortion first.')
         return 
@@ -197,7 +199,7 @@ def main():
         return
 
     # Finds an object pose from 3D-2D point correspondences using the RANSAC scheme.
-    __, rvec, t3, __ = cv2.solvePnPRansac(pts3_3D, pts3_2D, intrinsic_matrix, None)
+    __, rvec, t3, __ = solvePnPRansac(pts3_3D, pts3_2D, intrinsic_matrix, None)
     R3 = cv2.Rodrigues(rvec)[0]
     P3 = np.dot(intrinsic_matrix, np.hstack((R3, t3)))
     print('Projection matrix of the third view: \n{}'.format(P3))
