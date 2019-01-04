@@ -1,11 +1,10 @@
 #!/usr/bin/env
 # -*- coding: utf-8 -*-
+
 '''
-Script Name     : feature
-Author          : Charles Young
-Python Version  : Python 3.6.3
-Requirements    : (Please check document: requirements.txt or use command "pip install -r requirements.txt")
-Date            : 2018-12-30
+Copyright (c) 2019 Charles
+
+Licensed under the Apache License, Version 2.0
 '''
 
 import os
