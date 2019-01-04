@@ -36,7 +36,7 @@ def camera_calibration(input_pattern_path, resolution = [1280, 960], number_ches
 
     # Define a file manager
     images = []
-    for ext in ('*.jpg', '*.JPG', '*.png', '*.PNG'):
+    for ext in ('*.jpg', '*.JPG', '*.png', '*.PNG', '*.tif', '*.TIF', '*.bmp', '*.BMP'):
         images.extend(glob.glob(os.path.join(input_pattern_path, ext)))
     for fname in images:
         print('Processing {}..'.format(fname.split(os.sep)[-1]))
@@ -79,7 +79,7 @@ def camera_calibration(input_pattern_path, resolution = [1280, 960], number_ches
 
     return camera_matrix, distortion_vector, reprojection_error
 
-def undistort_images(images_path, camera_matrix, distortion_vector, resolution = [1280, 960], output_path = None):
+def undistort_images(images_path, images_base, camera_matrix, distortion_vector, resolution = [1280, 960], output_path = None):
 
     # Define resolution of input images
     RESOLUTION_X = resolution[0]
@@ -91,9 +91,11 @@ def undistort_images(images_path, camera_matrix, distortion_vector, resolution =
 
     # Define a file manager
     images = []
-    for ext in ('*.jpg', '*.JPG', '*.png', '*.PNG'):
+    for ext in ('*.jpg', '*.JPG', '*.png', '*.PNG', '*.tif', '*.TIF', '*.bmp', '*.BMP'):
         images.extend(glob.glob(os.path.join(images_path, ext)))
     for fname in images:
+        if not fname.split(os.sep)[-1].startswith(images_base):
+            continue
         print('Processing {}..'.format(fname.split(os.sep)[-1]))
 
         img = cv2.imread(fname)

@@ -29,8 +29,8 @@ parser.add_argument('--undistortion', action = 'store_const', const = True,
                     help = 'Whether to undistort raw images. Your raw images data should be stored in ./raw_images.')
 parser.add_argument('--custom', action = 'store_const', const = True, 
                     help = 'Whether to use custom methods.')
-parser.add_argument('--image-prefix', type = str, default = 'gate', 
-                    help = 'The prefix of filenames of raw images. Default \'gate\'')
+parser.add_argument('--image-base', type = str, default = 'gate', 
+                    help = 'The basename of image files. Default \'gate\'')
 parser.add_argument('--resolution', type = int, default = [1280, 960], nargs = '*', 
                     help = 'Image Resolution. The program will resize all images to this specification. Default [1280,960]')
 args = parser.parse_args()
@@ -96,11 +96,11 @@ def main():
     if args.undistortion:
         print('\n'+'-'*50)
         print('Undistort raw images..')
-        camera.undistort_images(raw_images_path, intrinsic_matrix, distortion_vector, resolution = args.resolution, output_path = undistortion_result_path)
+        camera.undistort_images(raw_images_path, args.image_base, intrinsic_matrix, distortion_vector, resolution = args.resolution, output_path = undistortion_result_path)
     
-    img1 = cv2.imread(os.path.join(undistortion_result_path, args.image_prefix + '_01.jpg'),0)
-    img2 = cv2.imread(os.path.join(undistortion_result_path, args.image_prefix + '_02.jpg'),0)
-    img3 = cv2.imread(os.path.join(undistortion_result_path, args.image_prefix + '_03.jpg'),0)
+    img1 = cv2.imread(os.path.join(undistortion_result_path, args.image_base + '_01.jpg'),0)
+    img2 = cv2.imread(os.path.join(undistortion_result_path, args.image_base + '_02.jpg'),0)
+    img3 = cv2.imread(os.path.join(undistortion_result_path, args.image_base + '_03.jpg'),0)
     if img1 is None or img2 is None or img3 is None:
         print('Cannot find undistorted images. Please perform undistortion first.')
         return 
@@ -219,13 +219,7 @@ def main():
         os.makedirs(pose_estimation_path)
     np.savez(os.path.join(pose_estimation_path, 'camera_projection_matrix.npz'), P1=P1, P2=P2, P3=P3)    
     np.savez(os.path.join(pose_estimation_path, '3D_2D_points_correspondences.npz'), D3=pts3D, D2_1=pts1_2D, D2_2=pts2_2D, D2_3=pts3_2D) 
-
-    if 0:
-        with np.load(os.path.join(pose_estimation_path, '3D_2D_points_correspondences.npz')) as reader:
-            pts3D, pts1_2D, pts2_2D, pts3_2D = reader['D3'], reader['D2_1'], reader['D2_2'], reader['D2_3']
-        with np.load(os.path.join(pose_estimation_path, 'camera_projection_matrix.npz')) as reader:
-            P1, P2, P3 = reader['P1'], reader['P2'], reader['P3']
-
+    
 
     '''--------------------- Bundle Adjustment ------------------------------------------'''
     print('\n'+'-'*50)
@@ -257,12 +251,6 @@ def main():
     print('Reprojection error on the first view : {}'.format(optimal.reprojection_error(optimal_pts3D, pts1_2D, optimal_P1, None)))
     print('Reprojection error on the second view : {}'.format(optimal.reprojection_error(optimal_pts3D, pts2_2D, optimal_P2, None)))
     print('Reprojection error on the third view : {}'.format(optimal.reprojection_error(optimal_pts3D, pts3_2D, optimal_P3, None)))
-
-    if 0:
-        with np.load(os.path.join(bundle_adjustment_path, '3D_2D_points_correspondences.npz')) as reader:
-            optimal_pts3D, pts1_2D, pts2_2D, pts3_2D = reader['D3'], reader['D2_1'], reader['D2_2'], reader['D2_3']
-        with np.load(os.path.join(bundle_adjustment_path, 'camera_projection_matrix.npz')) as reader:
-            optimal_P1, optimal_P2, optimal_P3 = reader['P1'], reader['P2'], reader['P3']
 
 
     '''--------------------- Visualization ------------------------------------------'''

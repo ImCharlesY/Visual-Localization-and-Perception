@@ -1,1 +1,2 @@
-opencv-contrib-python
+matplotlib
+scipy==0.19.1
