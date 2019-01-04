@@ -204,7 +204,7 @@ def m_ransac(fit_model, validate_model, X, num_samples, max_iter = -1, thresh = 
     return best_model is not None, best_model, best_mask
 
 
-def m_findFundamentalMat(pts1, pts2, method, thresh = 1.0, ratio_of_inliers = 0.99):
+def m_findFundamentalMat(pts1, pts2, method, thresh = 10000.0, ratio_of_inliers = 0.99):
     """Commpute the fundamental matrix using the 8-point algorithm or RANSAC + 8-point algorithm.
     Parameters
     ----------

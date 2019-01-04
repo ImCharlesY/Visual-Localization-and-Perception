@@ -11,12 +11,17 @@ Date            : 2018-12-30
 import os
 import numpy as np
 import cv2
-from . import m_method
 
-def fundamentalMat_estimation(pts1, pts2):
+def fundamentalMat_estimation(findFundamentalMat, pts1, pts2):
     """Perform fundamental matrix estimation.
     Parameters
     ----------
+    findFundamentalMat : lambada with a signature lambada pts1,pts2,method : F,mask
+        accepts two types of lambada:
+            opencv implementation : 
+                lambda pts1, pts2, method : cv2.findFundamentalMat(pts1, pts2, method, 1.0, 0.99)
+            custom implementation : 
+                lambda pts1, pts2, method : m_methods.m_findFundamentalMat(pts1, pts2, method, 10000.0, 0.99)
     pts1 : ndarray Nx2, dtype = float
         contains points in the reference view. 
     pts2 : ndarray Nx2, dtype = float
@@ -32,11 +37,7 @@ def fundamentalMat_estimation(pts1, pts2):
     """
 
     # Find the Fundamental Matrix via RANSAC
-    # F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_8POINT + cv2.RANSAC, 1.0, 0.99)
-    # mask = mask.ravel()
-
-    # Test custom RANSAC
-    F, mask = m_method.m_findFundamentalMat(pts1, pts2, cv2.FM_8POINT + cv2.RANSAC, 10000.0, 0.99)
+    F, mask = findFundamentalMat(pts1, pts2, cv2.FM_8POINT + cv2.RANSAC)
     mask = mask.ravel()
 
     # We select only inlier points
@@ -44,11 +45,7 @@ def fundamentalMat_estimation(pts1, pts2):
     pts2 = pts2[mask==1]
 
     # Find the Fundamental Matrix from all inlier points
-    # F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_8POINT)
-    # mask = mask.ravel()
-
-    # Test custom RANSAC
-    F, mask = m_method.m_findFundamentalMat(pts1, pts2, cv2.FM_8POINT)
+    F, mask = findFundamentalMat(pts1, pts2, cv2.FM_8POINT)
     mask = mask.ravel()
 
     # We select only inlier points

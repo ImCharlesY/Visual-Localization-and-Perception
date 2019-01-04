@@ -12,7 +12,7 @@ import os, shutil, argparse
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
-from utils import camera, feature, structure, visualize, optimal
+from utils import camera, feature, structure, visualize, optimal, m_methods
 
 # Check display environment
 disp = True
@@ -27,6 +27,8 @@ parser.add_argument('--calibration', action = 'store_const', const = True,
                     help = 'Whether to calibrate camera. Your chessboard patterns should be stored in ./chessboard_pattern directory.')
 parser.add_argument('--undistortion', action = 'store_const', const = True, 
                     help = 'Whether to undistort raw images. Your raw images data should be stored in ./raw_images.')
+parser.add_argument('--custom', action = 'store_const', const = True, 
+                    help = 'Whether to use custom methods.')
 parser.add_argument('--raw-images', type = str, default = 'desk', 
                     help = 'The prefix of filenames of raw images. Default \'desk\'')
 parser.add_argument('--resolution', type = int, default = [1280, 960], nargs = '*', 
@@ -41,6 +43,11 @@ if args.all:
 
 # Define resolution of input images
 assert len(args.resolution) == 2
+
+# Switch methods
+findFundamentalMat = lambda pts1, pts2, method : cv2.findFundamentalMat(pts1, pts2, method, 1.0, 0.99)
+if args.custom:
+    findFundamentalMat = lambda pts1, pts2, method : m_methods.m_findFundamentalMat(pts1, pts2, method, 10000.0, 0.99)
 
 # Define all paths
 chessboard_pattern_path = 'chessboard_pattern'
@@ -75,6 +82,7 @@ def main():
             print('Cannot find camera calibration parameters. Please perform camera calibration first.')
             return
         with np.load(os.path.join(calibration_result_path, camera_para_filename)) as reader:
+            print('Load camera parameters from file..')
             intrinsic_matrix, distortion_vector, reprojection_error = reader['intrinsic_matrix'], reader['distortion_vector'], reader['reprojection_error']
     
     print('Camera Matrix: \n{}\n'.format(intrinsic_matrix))
@@ -106,19 +114,19 @@ def main():
     print('Match image 1 and image 2..')
     pts12, pts21 = feature.match_keypoints_between_images(img1, img2, 
         output_path = keypoints_matching_result_path, inlier_points_filename = 'inliers_12.npz')
-    pts12, pts21, __ = structure.fundamentalMat_estimation(pts12, pts21)
+    pts12, pts21, __ = structure.fundamentalMat_estimation(findFundamentalMat, pts12, pts21)
     print('{} matches found.'.format(len(pts12)))
 
     print('Match image 1 and image 3..')
     pts13, pts31 = feature.match_keypoints_between_images(img1, img3, 
         output_path = keypoints_matching_result_path, inlier_points_filename = 'inliers_13.npz')
-    pts13, pts31, __ = structure.fundamentalMat_estimation(pts13, pts31)
+    pts13, pts31, __ = structure.fundamentalMat_estimation(findFundamentalMat, pts13, pts31)
     print('{} matches found.'.format(len(pts13)))
 
     print('Match image 2 and image 3..')
     pts23, pts32 = feature.match_keypoints_between_images(img2, img3, 
         output_path = keypoints_matching_result_path, inlier_points_filename = 'inliers_23.npz')
-    pts23, pts32, __ = structure.fundamentalMat_estimation(pts23, pts32)
+    pts23, pts32, __ = structure.fundamentalMat_estimation(findFundamentalMat, pts23, pts32)
     print('{} matches found.'.format(len(pts23)))
 
 
@@ -126,13 +134,12 @@ def main():
     print('\n'+'-'*50)
     print('Calculate fundamental/essential matrix between image 1 and image 2..')
     # Perform RANSAC on fundamental matrix estimation
-    __, __, F = structure.fundamentalMat_estimation(pts12, pts21)
+    __, __, F = structure.fundamentalMat_estimation(findFundamentalMat, pts12, pts21)
     # Calculate essential matrix
     E = np.dot(np.dot(intrinsic_matrix.T, F), intrinsic_matrix)
 
     print('Fundamental Matrix between two views (1 and 2): \n{}\n'.format(F))
     print('Essential Matrix between two views (1 and 2): \n{}\n'.format(E))
-    # print('After fundamental matrix estimation, {} inlier matches remain.'.format(len(pts12)))
 
 
     '''--------------------- Triangulation --------------------------------------------'''
@@ -260,11 +267,11 @@ def main():
     # Generate a color list to instinguish different matches
     colors = [tuple(np.random.randint(0,255,3).tolist()) for i in range(len(optimal_pts3D))]
     # Draw epilines and scatter reconstructed point cloud
-    __, __, F12 = structure.fundamentalMat_estimation(pts1_2D, pts2_2D)
+    __, __, F12 = structure.fundamentalMat_estimation(findFundamentalMat, pts1_2D, pts2_2D)
     annotated_img12, annotated_img21 = visualize.drawEpilines(img1, img2, pts1_2D, pts2_2D, F12, colors)
-    __, __, F13 = structure.fundamentalMat_estimation(pts1_2D, pts3_2D)
+    __, __, F13 = structure.fundamentalMat_estimation(findFundamentalMat, pts1_2D, pts3_2D)
     annotated_img13, annotated_img31 = visualize.drawEpilines(img1, img3, pts1_2D, pts3_2D, F13, colors)
-    __, __, F23 = structure.fundamentalMat_estimation(pts2_2D, pts3_2D)
+    __, __, F23 = structure.fundamentalMat_estimation(findFundamentalMat, pts2_2D, pts3_2D)
     annotated_img23, annotated_img32 = visualize.drawEpilines(img2, img3, pts2_2D, pts3_2D, F23, colors)
     if not os.path.exists(keypoints_matching_result_path):
         os.makedirs(keypoints_matching_result_path)
@@ -275,19 +282,25 @@ def main():
     cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG02_3.jpg'), annotated_img23)
     cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG03_2.jpg'), annotated_img32)
     visualize.scatter3DPoints(optimal_pts3D, colors, output_path = triangulation_path)
+    annotated_imgs = [annotated_img12, annotated_img21, annotated_img13, annotated_img31, annotated_img23, annotated_img32]
+    window_titles = ['1-2', '2-1', '1-3', '3-1', '2-3', '3-2']
     if disp:
-        annotated_img12 = cv2.resize(annotated_img12, (720, 480))
-        cv2.imshow('Annotated Image I - II', annotated_img12)
-        annotated_img21 = cv2.resize(annotated_img21, (720, 480))
-        cv2.imshow('Annotated Image II - I', annotated_img21)
-        annotated_img12 = cv2.resize(annotated_img13, (720, 480))
-        cv2.imshow('Annotated Image I - III', annotated_img13)
-        annotated_img21 = cv2.resize(annotated_img31, (720, 480))
-        cv2.imshow('Annotated Image III - I', annotated_img31)
-        annotated_img12 = cv2.resize(annotated_img23, (720, 480))
-        cv2.imshow('Annotated Image II - III', annotated_img23)
-        annotated_img21 = cv2.resize(annotated_img32, (720, 480))
-        cv2.imshow('Annotated Image III - II', annotated_img32)
+        for idx, img in enumerate(annotated_imgs):
+            annotated_imgs[idx] = cv2.resize(img, (432, 324))
+        concat_img = np.concatenate((
+            np.concatenate((annotated_imgs[0], annotated_imgs[1]), axis = 0), 
+            np.concatenate((annotated_imgs[2], annotated_imgs[3]), axis = 0), 
+            np.concatenate((annotated_imgs[4], annotated_imgs[5]), axis = 0)), axis = 1)
+        concat_img_height, concat_img_width, __ = concat_img.shape
+        horizontal_offset = concat_img_width // 3
+        vertical_offset = concat_img_height // 2
+        for idx, title in enumerate(window_titles):
+            box_coords = (
+                (0 + (idx // 2) * horizontal_offset, 0 + (idx % 2) * vertical_offset),
+                (0 + (idx // 2) * horizontal_offset + 70, 0 + (idx % 2) * vertical_offset + 30))
+            cv2.rectangle(concat_img, box_coords[0], box_coords[1], (255,255,255), cv2.FILLED)
+            cv2.putText(concat_img, title, (box_coords[0][0] + 2, box_coords[0][1] + 25), cv2.FONT_HERSHEY_SIMPLEX, fontScale = 1, color = (0, 0, 0), thickness = 1)
+        cv2.imshow('Match', concat_img)
         plt.show()
 
 
