@@ -62,23 +62,23 @@ def camera_calibration(input_pattern_path, resolution = [1280, 960], number_ches
             print('Fail to find corners.')
 
     # Calibration
-    ret, camera_matrix, distortion_vector, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+    ret, camera_matrix, distorted_vector, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
     # Calculate reprojection error
     reprojection_error = 0
     for i in range(len(objpoints)):
-        imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], camera_matrix, distortion_vector)
+        imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], camera_matrix, distorted_vector)
         error = cv2.norm(imgpoints[i],imgpoints2, cv2.NORM_L2)/len(imgpoints2)
         reprojection_error += error
     reprojection_error /= len(objpoints)
 
     if output_images_path is not None:
         np.savez(os.path.join(output_images_path, output_camera_para_filename), 
-            intrinsic_matrix = camera_matrix, distortion_vector = distortion_vector, reprojection_error = reprojection_error) 
+            intrinsic_matrix = camera_matrix, distorted_vector = distorted_vector, reprojection_error = reprojection_error) 
 
-    return camera_matrix, distortion_vector, reprojection_error
+    return camera_matrix, distorted_vector, reprojection_error
 
-def undistort_images(images_path, images_base, camera_matrix, distortion_vector, resolution = [1280, 960], output_path = None):
+def undistort_images(images_path, images_base, camera_matrix, distorted_vector, resolution = [1280, 960], output_path = None):
 
     # Define resolution of input images
     RESOLUTION_X = resolution[0]
@@ -101,10 +101,10 @@ def undistort_images(images_path, images_base, camera_matrix, distortion_vector,
         img = cv2.resize(img, (RESOLUTION_X, RESOLUTION_Y))
 
         h, w = img.shape[:2]
-        new_camera_matrix, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, distortion_vector, (w,h), 1, (w,h))
+        new_camera_matrix, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, distorted_vector, (w,h), 1, (w,h))
 
         # Undistort using mapping
-        mapx,mapy = cv2.initUndistortRectifyMap(camera_matrix, distortion_vector, None, new_camera_matrix, (w,h), 5)
+        mapx,mapy = cv2.initUndistortRectifyMap(camera_matrix, distorted_vector, None, new_camera_matrix, (w,h), 5)
         dst = cv2.remap(img, mapx, mapy, cv2.INTER_LINEAR)
 
         # Crop the image

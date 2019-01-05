@@ -24,7 +24,7 @@ parser.add_argument('--all', action = 'store_const', const =True,
                     help = 'Specify to run all procedures.')
 parser.add_argument('--calibration', action = 'store_const', const = True, 
                     help = 'Whether to calibrate camera. Your chessboard patterns should be stored in ./chessboard_pattern directory.')
-parser.add_argument('--undistortion', action = 'store_const', const = True, 
+parser.add_argument('--undistort', action = 'store_const', const = True, 
                     help = 'Whether to undistort raw images. Your raw images data should be stored in ./raw_images.')
 parser.add_argument('--custom', action = 'store_const', const = True, 
                     help = 'Whether to use custom methods.')
@@ -36,7 +36,7 @@ args = parser.parse_args()
 
 if args.all:
     args.calibration = True
-    args.undistortion = True
+    args.undistort = True
     print('Remove current cache..')
     shutil.rmtree('.tmp')
 
@@ -56,7 +56,7 @@ calibration_result_path = os.path.join('.tmp', 'calibration_result')
 camera_para_filename = 'camera_parameters.npz'
 
 raw_images_path = 'raw_images'
-undistortion_result_path = os.path.join('.tmp', 'undistorted_images')
+undistort_result_path = os.path.join('.tmp', 'undistorted_images')
 
 keypoints_matching_result_path = os.path.join('.tmp', 'keypoints_matching_result')
 
@@ -75,7 +75,7 @@ def main():
     print('\n'+'-'*50)
     if args.calibration:
         print('Camera Calibration..')
-        intrinsic_matrix, distortion_vector, reprojection_error = camera.camera_calibration(
+        intrinsic_matrix, distorted_vector, reprojection_error = camera.camera_calibration(
             chessboard_pattern_path, resolution = args.resolution, number_chessboard_colum = 6, number_chessboard_row = 8, 
             output_images_path = calibration_result_path, output_camera_para_filename = camera_para_filename)
     else: # Load camera parameter
@@ -84,24 +84,24 @@ def main():
             return
         with np.load(os.path.join(calibration_result_path, camera_para_filename)) as reader:
             print('Load camera parameters from file..')
-            intrinsic_matrix, distortion_vector, reprojection_error = reader['intrinsic_matrix'], reader['distortion_vector'], reader['reprojection_error']
+            intrinsic_matrix, distorted_vector, reprojection_error = reader['intrinsic_matrix'], reader['distorted_vector'], reader['reprojection_error']
     
     print('Camera Matrix: \n{}\n'.format(intrinsic_matrix))
-    print('Distortion Vector: \n{}\n'.format(distortion_vector))
-    print('Reprojection Error: {}'.format(reprojection_error))
+    print('distorted Vector: \n{}\n'.format(distorted_vector))
+    print('Average Reprojection Error: {}'.format(reprojection_error))
 
 
     '''------------------------ Undistort Raw Image ------------------------------------------------------'''
-    if args.undistortion:
+    if args.undistort:
         print('\n'+'-'*50)
         print('Undistort raw images..')
-        camera.undistort_images(raw_images_path, args.image_base, intrinsic_matrix, distortion_vector, resolution = args.resolution, output_path = undistortion_result_path)
+        camera.undistort_images(raw_images_path, args.image_base, intrinsic_matrix, distorted_vector, resolution = args.resolution, output_path = undistort_result_path)
     
-    img1 = cv2.imread(os.path.join(undistortion_result_path, args.image_base + '_01.jpg'),0)
-    img2 = cv2.imread(os.path.join(undistortion_result_path, args.image_base + '_02.jpg'),0)
-    img3 = cv2.imread(os.path.join(undistortion_result_path, args.image_base + '_03.jpg'),0)
+    img1 = cv2.imread(os.path.join(undistort_result_path, args.image_base + '_01.jpg'),0)
+    img2 = cv2.imread(os.path.join(undistort_result_path, args.image_base + '_02.jpg'),0)
+    img3 = cv2.imread(os.path.join(undistort_result_path, args.image_base + '_03.jpg'),0)
     if img1 is None or img2 is None or img3 is None:
-        print('Cannot find undistorted images. Please perform undistortion first.')
+        print('Cannot find undistorted images. Please put your input images in ./raw_images/ directory and run the script with \'undistort\' option specified first.')
         return 
     img1 = cv2.resize(img1, tuple(args.resolution))
     img2 = cv2.resize(img2, tuple(args.resolution))
@@ -149,14 +149,12 @@ def main():
 
     # Calculate projection matrix of the first view
     P1 = np.dot(intrinsic_matrix, np.hstack((np.eye(3), np.zeros((3,1)))))
-    print('Projection matrix of the first view: \n{}\n'.format(P1))
 
     # Calculate projection matrix of the second view
     # First calculate extrinsic matrix ([R|t]) from essential matrix
     P2s = structure.compute_extrinsic_from_essential(E)
     # We will get 4 solutions, so we need to find the correct one
     P2 = structure.find_correct_projection(P2s, intrinsic_matrix, P1, pts12.T[:,0], pts21.T[:,0])
-    print('Projection matrix of the second view: \n{}\n'.format(P2))
 
     # Triangulation
     # ATTENTION: all input data should be of float type or it will raise BUS ERROR exception
@@ -199,9 +197,7 @@ def main():
 
     # Finds an object pose from 3D-2D point correspondences using the RANSAC scheme.
     __, rvec, t3, __ = solvePnPRansac(pts3_3D, pts3_2D, intrinsic_matrix, None)
-    R3 = cv2.Rodrigues(rvec)[0]
-    P3 = np.dot(intrinsic_matrix, np.hstack((R3, t3)))
-    print('Projection matrix of the third view: \n{}'.format(P3))
+    P3 = np.dot(intrinsic_matrix, np.hstack((cv2.Rodrigues(rvec)[0], t3)))
 
     # Update 3D-2D point correspondences on the first and second views
     pts1_2D = []
@@ -218,14 +214,20 @@ def main():
         os.makedirs(pose_estimation_path)
     np.savez(os.path.join(pose_estimation_path, 'camera_projection_matrix.npz'), P1=P1, P2=P2, P3=P3)    
     np.savez(os.path.join(pose_estimation_path, '3D_2D_points_correspondences.npz'), D3=pts3D, D2_1=pts1_2D, D2_2=pts2_2D, D2_3=pts3_2D) 
-    
+
+    print('\n\nPose estimation results: ')
+    camera_poses = optimal.extract_pose_from_projection(np.asarray([[P1], [P2], [P3]]), rotation_matrix = True)
+    print('Pose (extrinsic matrix) of the first view : \n{}'.format(camera_poses[0]))
+    print('Reprojection error on the first view : {}\n'.format(optimal.reprojection_error(pts3D, pts1_2D, P1, None)))
+    print('Pose (extrinsic matrix) of the second view : \n{}'.format(camera_poses[1]))
+    print('Reprojection error on the second view : {}\n'.format(optimal.reprojection_error(pts3D, pts2_2D, P2, None)))
+    print('Pose (extrinsic matrix) of the third view : \n{}'.format(camera_poses[2]))
+    print('Reprojection error on the third view : {}\n'.format(optimal.reprojection_error(pts3D, pts3_2D, P3, None)))
+
 
     '''--------------------- Bundle Adjustment ------------------------------------------'''
     print('\n'+'-'*50)
     print('Bundle Adjustment..')    
-    print('Reprojection error on the first view : {}'.format(optimal.reprojection_error(pts3D, pts1_2D, P1, None)))
-    print('Reprojection error on the second view : {}'.format(optimal.reprojection_error(pts3D, pts2_2D, P2, None)))
-    print('Reprojection error on the third view : {}'.format(optimal.reprojection_error(pts3D, pts3_2D, P3, None)))
 
     # Prepare input parameters for sba
     n_cameras = 3
@@ -247,12 +249,33 @@ def main():
     np.savez(os.path.join(bundle_adjustment_path, 'camera_projection_matrix.npz'), P1=optimal_P1, P2=optimal_P2, P3=optimal_P3)    
     np.savez(os.path.join(bundle_adjustment_path, '3D_2D_points_correspondences.npz'), D3=optimal_pts3D, D2_1=pts1_2D, D2_2=pts2_2D, D2_3=pts3_2D) 
 
-    print('Reprojection error on the first view : {}'.format(optimal.reprojection_error(optimal_pts3D, pts1_2D, optimal_P1, None)))
-    print('Reprojection error on the second view : {}'.format(optimal.reprojection_error(optimal_pts3D, pts2_2D, optimal_P2, None)))
-    print('Reprojection error on the third view : {}'.format(optimal.reprojection_error(optimal_pts3D, pts3_2D, optimal_P3, None)))
+    print('\n\nAfter SBA: ')
+    camera_poses = optimal.extract_pose_from_projection(np.asarray([[optimal_P1], [optimal_P2], [optimal_P3]]), rotation_matrix = True)
+    print('Pose (extrinsic matrix) of the first view : \n{}'.format(camera_poses[0]))
+    print('Reprojection error on the first view : {}\n'.format(optimal.reprojection_error(optimal_pts3D, pts1_2D, optimal_P1, None)))
+    print('Pose (extrinsic matrix) of the second view : \n{}'.format(camera_poses[1]))
+    print('Reprojection error on the second view : {}\n'.format(optimal.reprojection_error(optimal_pts3D, pts2_2D, optimal_P2, None)))
+    print('Pose (extrinsic matrix) of the third view : \n{}'.format(camera_poses[2]))
+    print('Reprojection error on the third view : {}\n'.format(optimal.reprojection_error(optimal_pts3D, pts3_2D, optimal_P3, None)))
 
-
+    
     '''--------------------- Visualization ------------------------------------------'''
+
+    img1 = cv2.imread(os.path.join(undistort_result_path, args.image_base + '_01.jpg'),0)
+    img2 = cv2.imread(os.path.join(undistort_result_path, args.image_base + '_02.jpg'),0)
+    img3 = cv2.imread(os.path.join(undistort_result_path, args.image_base + '_03.jpg'),0)
+    if img1 is None or img2 is None or img3 is None:
+        print('Cannot find undistorted images. Please perform undistort first.')
+        return 
+    img1 = cv2.resize(img1, tuple(args.resolution))
+    img2 = cv2.resize(img2, tuple(args.resolution))
+    img3 = cv2.resize(img3, tuple(args.resolution))
+
+    with np.load(os.path.join(bundle_adjustment_path, 'camera_projection_matrix.npz')) as reader:
+        optimal_P1, optimal_P2, optimal_P3 = reader['P1'], reader['P2'], reader['P3']
+    with np.load(os.path.join(bundle_adjustment_path, '3D_2D_points_correspondences.npz')) as reader:
+        optimal_pts3D, pts1_2D, pts2_2D, pts3_2D = reader['D3'], reader['D2_1'], reader['D2_2'], reader['D2_3']
+
     # Generate a color list to instinguish different matches
     colors = [tuple(np.random.randint(0,255,3).tolist()) for i in range(len(optimal_pts3D))]
     # Draw epilines and scatter reconstructed point cloud
@@ -262,6 +285,7 @@ def main():
     annotated_img13, annotated_img31 = visualize.drawEpilines(img1, img3, pts1_2D, pts3_2D, F13, colors)
     __, __, F23 = structure.fundamentalMat_estimation(findFundamentalMat, pts2_2D, pts3_2D)
     annotated_img23, annotated_img32 = visualize.drawEpilines(img2, img3, pts2_2D, pts3_2D, F23, colors)
+
     if not os.path.exists(keypoints_matching_result_path):
         os.makedirs(keypoints_matching_result_path)
     cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG01_2.jpg'), annotated_img12)
@@ -270,25 +294,30 @@ def main():
     cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG03_1.jpg'), annotated_img31)
     cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG02_3.jpg'), annotated_img23)
     cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG03_2.jpg'), annotated_img32)
-    visualize.scatter3DPoints(optimal_pts3D, colors, output_path = triangulation_path)
+    visualize.scatter3DPoints(pts3D, colors, figure_name = 'Before SBA')
+    visualize.scatter3DPoints(optimal_pts3D, colors, figure_name = 'After SBA', output_path = triangulation_path)
+
     annotated_imgs = [annotated_img12, annotated_img21, annotated_img13, annotated_img31, annotated_img23, annotated_img32]
     window_titles = ['1-2', '2-1', '1-3', '3-1', '2-3', '3-2']
+    for idx, img in enumerate(annotated_imgs):
+        annotated_imgs[idx] = cv2.resize(img, (432, 324))
+    concat_img = np.concatenate((
+        np.concatenate((annotated_imgs[0], annotated_imgs[1]), axis = 0), 
+        np.concatenate((annotated_imgs[2], annotated_imgs[3]), axis = 0), 
+        np.concatenate((annotated_imgs[4], annotated_imgs[5]), axis = 0)), axis = 1)
+
+    concat_img_height, concat_img_width, __ = concat_img.shape
+    horizontal_offset = concat_img_width // 3
+    vertical_offset = concat_img_height // 2
+    for idx, title in enumerate(window_titles):
+        box_coords = (
+            (0 + (idx // 2) * horizontal_offset, 0 + (idx % 2) * vertical_offset),
+            (0 + (idx // 2) * horizontal_offset + 70, 0 + (idx % 2) * vertical_offset + 30))
+        cv2.rectangle(concat_img, box_coords[0], box_coords[1], (255,255,255), cv2.FILLED)
+        cv2.putText(concat_img, title, (box_coords[0][0] + 2, box_coords[0][1] + 25), cv2.FONT_HERSHEY_SIMPLEX, fontScale = 1, color = (0, 0, 0), thickness = 1)
+    cv2.imwrite(os.path.join(keypoints_matching_result_path, 'concat.jpg'), concat_img)
+    
     if disp:
-        for idx, img in enumerate(annotated_imgs):
-            annotated_imgs[idx] = cv2.resize(img, (432, 324))
-        concat_img = np.concatenate((
-            np.concatenate((annotated_imgs[0], annotated_imgs[1]), axis = 0), 
-            np.concatenate((annotated_imgs[2], annotated_imgs[3]), axis = 0), 
-            np.concatenate((annotated_imgs[4], annotated_imgs[5]), axis = 0)), axis = 1)
-        concat_img_height, concat_img_width, __ = concat_img.shape
-        horizontal_offset = concat_img_width // 3
-        vertical_offset = concat_img_height // 2
-        for idx, title in enumerate(window_titles):
-            box_coords = (
-                (0 + (idx // 2) * horizontal_offset, 0 + (idx % 2) * vertical_offset),
-                (0 + (idx // 2) * horizontal_offset + 70, 0 + (idx % 2) * vertical_offset + 30))
-            cv2.rectangle(concat_img, box_coords[0], box_coords[1], (255,255,255), cv2.FILLED)
-            cv2.putText(concat_img, title, (box_coords[0][0] + 2, box_coords[0][1] + 25), cv2.FONT_HERSHEY_SIMPLEX, fontScale = 1, color = (0, 0, 0), thickness = 1)
         cv2.imshow('Match', concat_img)
         plt.show()
 

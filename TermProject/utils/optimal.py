@@ -30,16 +30,19 @@ def reprojection_error(objpoints, imgpoints, projection_matrix, distortion_vecto
 
     return error
 
-def extract_pose_from_projection(projs):
+def extract_pose_from_projection(projs, rotation_matrix = False):
 
     poses = []
     for proj in projs:
         intrinsic_matrix = cv2.decomposeProjectionMatrix(proj[0])[0]
         extrinsic_matrix = np.dot(np.linalg.inv(intrinsic_matrix), proj[0])
         R, t = extrinsic_matrix[:3, :3], extrinsic_matrix[:, 3]
-        rvec = cv2.Rodrigues(R)[0].ravel()
-        tvec = t.ravel()
-        poses.append(np.hstack([rvec, tvec]))
+        if rotation_matrix:
+            poses.append(np.hstack([R, t.reshape(-1,1)]))
+        else:
+            rvec = cv2.Rodrigues(R)[0].ravel()
+            tvec = t.ravel()
+            poses.append(np.hstack([rvec, tvec]))
 
     return np.asarray(poses)
 

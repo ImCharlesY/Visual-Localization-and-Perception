@@ -13,20 +13,31 @@ import cv2
 
 def match_keypoints_between_images(img1, img2, output_path = None, inlier_points_filename = 'inliers.npz'):
    
-    # find the keypoints and descriptors with SIFT
-    sift = cv2.xfeatures2d.SIFT_create()
-    kp1, des1 = sift.detectAndCompute(img1, None)
-    kp2, des2 = sift.detectAndCompute(img2, None)
-
     # FLANN parameters
     FLANN_INDEX_KDTREE = 0
     index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
     search_params = dict(checks=50)
-
     flann = cv2.FlannBasedMatcher(index_params, search_params)
-    matches = flann.knnMatch(des1, des2, k=2)
 
     good = []
+
+    # find the keypoints and descriptors with SIFT
+    sift = cv2.xfeatures2d.SIFT_create()
+    kp1, des1 = sift.detectAndCompute(img1, None)
+    kp2, des2 = sift.detectAndCompute(img2, None)
+    matches = flann.knnMatch(des1, des2, k=2)
+
+    # ratio test as per Lowe's paper
+    for i,(m,n) in enumerate(matches):
+        if m.distance < 0.7*n.distance:
+            good.append(m)
+
+    # find the keypoints and descriptors with SURF
+    surf = cv2.xfeatures2d.SURF_create()
+    kp1, des1 = surf.detectAndCompute(img1, None)
+    kp2, des2 = surf.detectAndCompute(img2, None)
+    matches = flann.knnMatch(des1, des2, k=2)
+
     # ratio test as per Lowe's paper
     for i,(m,n) in enumerate(matches):
         if m.distance < 0.7*n.distance:

@@ -45,10 +45,10 @@ def drawEpilines(img1, img2, pts1, pts2, F, colors):
 
     return new_img1, new_img2
 
-def scatter3DPoints(pts, colors, output_path = None):
+def scatter3DPoints(pts, colors, figure_name = 'Figure', output_path = None):
 
-    fig = plt.figure()
-    fig.suptitle('3D reconstructed', fontsize = 16)
+    fig = plt.figure(figure_name)
+    fig.suptitle('3D reconstruction', fontsize = 16)
     ax = fig.gca(projection = '3d')
     ax.set_xlabel('x axis')
     ax.set_ylabel('y axis')
