@@ -278,6 +278,14 @@ def main():
 
     # Generate a color list to instinguish different matches
     colors = [tuple(np.random.randint(0,255,3).tolist()) for i in range(len(optimal_pts3D))]
+
+    # Plot 3D result
+    camera_poses = optimal.extract_pose_from_projection(np.asarray([[P1], [P2], [P3]]), rotation_matrix = True)
+    visualize.plot3DReconstruction(pts3D, colors, camera_poses, figure_name = 'Before SBA')
+    camera_poses = optimal.extract_pose_from_projection(np.asarray([[optimal_P1], [optimal_P2], [optimal_P3]]), rotation_matrix = True)
+    visualize.plot3DReconstruction(optimal_pts3D, colors, camera_poses, figure_name = 'After SBA', output_path = triangulation_path)
+
+    # Plot 2D result
     # Draw epilines and scatter reconstructed point cloud
     __, __, F12 = structure.fundamentalMat_estimation(findFundamentalMat, pts1_2D, pts2_2D)
     annotated_img12, annotated_img21 = visualize.drawEpilines(img1, img2, pts1_2D, pts2_2D, F12, colors)
@@ -294,9 +302,8 @@ def main():
     cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG03_1.jpg'), annotated_img31)
     cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG02_3.jpg'), annotated_img23)
     cv2.imwrite(os.path.join(keypoints_matching_result_path, 'IMG03_2.jpg'), annotated_img32)
-    visualize.scatter3DPoints(pts3D, colors, figure_name = 'Before SBA')
-    visualize.scatter3DPoints(optimal_pts3D, colors, figure_name = 'After SBA', output_path = triangulation_path)
 
+    # Concatenate 2D result images for show
     annotated_imgs = [annotated_img12, annotated_img21, annotated_img13, annotated_img31, annotated_img23, annotated_img32]
     window_titles = ['1-2', '2-1', '1-3', '3-1', '2-3', '3-2']
     for idx, img in enumerate(annotated_imgs):

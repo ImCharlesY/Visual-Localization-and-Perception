@@ -29,6 +29,7 @@ def drawLines(img1, img2, lines, pts1, pts2, colors):
         img2 = cv2.circle(img2, tuple(pt2), 5, color, -1)
     return img1, img2
 
+
 def drawEpilines(img1, img2, pts1, pts2, F, colors):
 
     # Find epilines corresponding to points in right image (second image) and
@@ -45,7 +46,25 @@ def drawEpilines(img1, img2, pts1, pts2, F, colors):
 
     return new_img1, new_img2
 
-def scatter3DPoints(pts, colors, figure_name = 'Figure', output_path = None):
+
+def plot3DReconstruction(pts, colors, poses, figure_name = 'Figure', output_path = None):
+
+    def scatter3DPoints(pts, colors, ax):
+
+        for i, (pt, c) in enumerate(zip(pts, colors), 1):
+            ax.scatter(pt[0], pt[1], pt[2], c = np.asarray([c]) / 255, marker = 'o')
+            ax.text(pt[0], pt[1], pt[2], '{}'.format(i), size = 10, zorder = 1, color = np.asarray(c) / 255)
+        return ax
+            
+    def plotCameraPose(pose, idx, ax):
+
+        R, t = pose[:, :3], pose[:,-1]
+        pos = np.dot(R, -t).ravel()
+        colors = ['r', 'g', 'b']
+        for i, c in enumerate(colors):
+            ax.quiver(pos[0], pos[1], pos[2], R[0,i], R[1,i], R[2,i], color = c, length = 0.5, normalize = True)
+        ax.text(pos[0], pos[1], pos[2], '{}'.format(idx), size = 12, zorder = 1)
+        return ax
 
     fig = plt.figure(figure_name)
     fig.suptitle('3D reconstruction', fontsize = 16)
@@ -54,11 +73,13 @@ def scatter3DPoints(pts, colors, figure_name = 'Figure', output_path = None):
     ax.set_ylabel('y axis')
     ax.set_zlabel('z axis')
 
-    for i, (pt, c) in enumerate(zip(pts, colors), 1):
-        ax.scatter(pt[0], pt[1], pt[2], c = np.asarray([c]) / 255, marker = 'o')
-        ax.text(pt[0], pt[1], pt[2], '{}'.format(i), size = 10, zorder = 1, color = np.asarray(c) / 255)
-        
+    ax = scatter3DPoints(pts, colors, ax)
+    for idx, pose in enumerate(poses, 1):
+        ax = plotCameraPose(pose, idx, ax)
+
+    ax.axis('square')
+
     if output_path is not None:
         if not os.path.exists(output_path):
             os.makedirs(output_path)
-        plt.savefig(os.path.join(output_path, '3DPointsCloud.svg'), bbox_inches = 'tight', format = 'svg')
+        plt.savefig(os.path.join(output_path, '3DPointsCloud.svg'), bbox_inches = 'tight', format = 'svg')    
