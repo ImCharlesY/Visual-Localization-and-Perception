@@ -37,8 +37,9 @@ args = parser.parse_args()
 if args.all:
     args.calibration = True
     args.undistort = True
-    print('Remove current cache..')
-    shutil.rmtree('.tmp')
+    if os.path.exists('.tmp'):
+        print('Remove current cache..')
+        shutil.rmtree('.tmp')
 
 # Define resolution of input images
 assert len(args.resolution) == 2

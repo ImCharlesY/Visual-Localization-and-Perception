@@ -78,6 +78,10 @@ def plot3DReconstruction(pts, colors, poses, figure_name = 'Figure', output_path
         ax = plotCameraPose(pose, idx, ax)
 
     ax.axis('square')
+    ax.set_xlim(np.amin(pts[:,0]) - 1)
+    ax.set_ylim(np.amin(pts[:,1]) - 1)
+    ax.set_zlim(-0.5)
+    ax.view_init(-60, -80)
 
     if output_path is not None:
         if not os.path.exists(output_path):

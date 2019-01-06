@@ -60,7 +60,7 @@ pip install -r requirements.txt
 pip install opencv-contrib-python==3.2.0.7
 ```
 
-If everything works well, you can run `python -m main.py -h` to display some help message. If you put some chessboard photos in `./chessboard_pattern` directory, then you can run `python -m main.py` without any other arguments for default to perform SFM on three photos with basename `gate` that I have put in `./raw_images` directory. 
+If everything works well, you can run `python -m main.py -h` to display some help message. If you put some chessboard photos in `./chessboard_pattern` directory, then you can run `python -m main.py --all` for default to perform Sfm on three photos with basename `gate` that I have put in `./raw_images` directory. 
 
 ## 2. Detailed Documentation
 
@@ -78,7 +78,7 @@ The `main.py` script in root directory is the top script. You can run it with so
 ### main.py
 
 ```
-usage: main.py [-h] [--all] [--calibration] [--undistortion] [--custom]
+usage: main.py [-h] [--all] [--calibration] [--undistort] [--custom]
                [--image-base IMAGE_BASE]
                [--resolution [RESOLUTION [RESOLUTION ...]]]
 
@@ -87,7 +87,7 @@ optional arguments:
   --all                 Specify to run all procedures.
   --calibration         Whether to calibrate camera. Your chessboard patterns
                         should be stored in ./chessboard_pattern directory.
-  --undistortion        Whether to undistort raw images. Your raw images data
+  --undistort           Whether to undistort raw images. Your raw images data
                         should be stored in ./raw_images.
   --custom              Whether to use custom methods.
   --image-base IMAGE_BASE
@@ -124,7 +124,7 @@ optional arguments:
 
 All the procedures of Sfm are implemented in `main.py`, including camera calibration, photo undistortion, feature matching, pose estimation, triangulation and bundle adjustment.
 
-When you run the script for the first time, you should calibrate the camera and also undistort your input photos. So you should specify `--calibration` and `--undistortion` options or just `--all` option in simple.
+When you run the script for the first time, you should calibrate the camera and also undistort your input photos. So you should specify `--calibration` and `--undistort` options or just `--all` option in simple.
 
 ```
 python -m main.py --image-base gate --all
@@ -140,12 +140,12 @@ After the above operation, you can check the results in `./tmp/` directory for f
 
 - __Different input photos__
 
-    Assuming that you have finished camera calibration (i.e. the camera parameters including intrinsic matrix and distortion vector should be stored in `./.tmp/calibration_result/camera_parameters.npz` ), you have three new input photos, put them in `./raw_images/` directory and name them as `scene_01.jpg`, `scene_02.jpg`, and `scene_03.jpg`.
+    Assuming that you have finished camera calibration (i.e. the camera parameters including intrinsic matrix and distorted vector should be stored in `./.tmp/calibration_result/camera_parameters.npz` ), you have three new input photos, put them in `./raw_images/` directory and name them as `scene_01.jpg`, `scene_02.jpg`, and `scene_03.jpg`.
 
     Then you can type the following command line in terminal to reconsturct 3D points cloud and to obtain the poses of camera in three views.
 
     ```
-    python -m main.py --image-base scene --distortion
+    python -m main.py --image-base scene --undistort
     ```
 
     This procedure will skip camera calibration and use the pre-calibrated camera parameters stored in `./.tmp/` directory.
@@ -160,7 +160,7 @@ After the above operation, you can check the results in `./tmp/` directory for f
     python -m main.py --image-base gate --custom
     ```
     
-    This procedure will skip camera calibration and undistortion. Remember every time you run the script, you should specify the `--image-base` option as the basename of your own input photo files, or the script will use the default `gate` photos. 
+    This procedure will skip camera calibration and images undistortion. Remember every time you run the script, you should specify the `--image-base` option as the basename of your own input photo files, or the script will use the default `gate` photos. 
 
     The implementation of the custom methods can be found in script `utils/m_methods.py`. 
 
