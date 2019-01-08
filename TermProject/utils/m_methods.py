@@ -59,7 +59,7 @@ def m_ransac(fit_model, validate_model, X, num_samples, max_iter = -1, thresh = 
 
     if max_iter == -1:
         # we use 1.6 times of theoretical maximum number of iterations
-        max_iter = int(np.log10(1 - ratio_of_inliers) / np.log10(1 - np.power(0.8, 8)) * 1.6)
+        max_iter = int(np.log10(1 - ratio_of_inliers) / np.log10(1 - np.power(0.8, 8)) * 10)
 
     # perform RANSAC iterations
     for it in range(max_iter):
@@ -123,7 +123,7 @@ def eight_point_algorithm(pts1, pts2):
     # compute linear least square solution
     __, __, VT = np.linalg.svd(A)
     # solution can be obtained from the vector corresponds to the minimum singular value
-    F = VT[-1].reshape(3,3)
+    F = VT[-1].reshape(3,3).T
         
     # constrain F : making rank 2 by zeroing out last singular value
     U, S, VT = np.linalg.svd(F)
@@ -166,8 +166,8 @@ def find_fundamental_matrix(points):
     F = eight_point_algorithm(pts1, pts2)
 
     # reverse normalization
-    # return np.dot(np.dot(T2.T, F), T1)
-    return cv2.findFundamentalMat(points[:,:2], points[:,2:], cv2.FM_8POINT)[0]
+    return np.dot(np.dot(T2.T, F), T1)
+    # return cv2.findFundamentalMat(points[:,:2], points[:,2:], cv2.FM_8POINT)[0]
 
 
 def compute_fundamental_matrix_error(mat, points):
