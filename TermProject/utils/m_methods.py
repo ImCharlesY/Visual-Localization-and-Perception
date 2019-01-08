@@ -68,10 +68,7 @@ def m_ransac(fit_model, validate_model, X, num_samples, max_iter = -1, thresh = 
         all_indices = np.arange(X.shape[0])
         np.random.shuffle(all_indices)
      
-        indices_1 = all_indices[:num_samples]
-        indices_2 = all_indices[num_samples:]
-     
-        sample_points = X[indices_1,:]
+        sample_points = X[all_indices[:num_samples],:]
      
         # fit a model for sample points
         model = fit_model(sample_points)
@@ -81,8 +78,8 @@ def m_ransac(fit_model, validate_model, X, num_samples, max_iter = -1, thresh = 
      
         # compute error of the model on the whole point cloud   
         dist = validate_model(model, X)
-        mask = np.zeros(len(X))
-        mask[np.abs(dist) < thresh] = 1
+        mask = np.zeros(len(X)).astype('uint8') 
+        mask[np.abs(dist) <= thresh] = 1
 
         # cache the best model
         if np.count_nonzero(mask) / len(X) > best_ratio:
@@ -124,7 +121,7 @@ def eight_point_algorithm(pts1, pts2):
         pts1[:,2]*pts2[:,0], pts1[:,2]*pts2[:,1], pts1[:,2]*pts2[:,2] ]).T
 
     # compute linear least square solution
-    __, S, VT = np.linalg.svd(A)
+    __, __, VT = np.linalg.svd(A)
     # solution can be obtained from the vector corresponds to the minimum singular value
     F = VT[-1].reshape(3,3)
         
@@ -157,19 +154,20 @@ def find_fundamental_matrix(points):
     # after the transformation each set will have the mass center at the coordinate origin
     # and the average distance from the origin will be ~sqrt(2).
     mean1 = np.mean(pts1[:,:2], axis = 0)
-    S1 = np.sqrt(2) / np.std(pts1[:,:2])
+    S1 = np.sqrt(2) / np.std(pts1[:,:2], axis = 0).sum()
     T1 = np.array([[S1,0,-S1*mean1[0]], [0,S1,-S1*mean1[1]], [0,0,1]])
     pts1 = np.dot(T1,pts1.T).T
     
     mean2 = np.mean(pts2[:,:2], axis = 0)
-    S2 = np.sqrt(2) / np.std(pts2[:,:2])
+    S2 = np.sqrt(2) / np.std(pts2[:,:2], axis = 0).sum()
     T2 = np.array([[S2,0,-S2*mean2[0]], [0,S2,-S2*mean2[1]], [0,0,1]])
     pts2 = np.dot(T2,pts2.T).T
 
     F = eight_point_algorithm(pts1, pts2)
 
     # reverse normalization
-    return np.dot(np.dot(T1.T, F), T2)
+    # return np.dot(np.dot(T2.T, F), T1)
+    return cv2.findFundamentalMat(points[:,:2], points[:,2:], cv2.FM_8POINT)[0]
 
 
 def compute_fundamental_matrix_error(mat, points):
@@ -198,7 +196,7 @@ def compute_fundamental_matrix_error(mat, points):
     d2 = (pts2.T * m2).sum(axis = 0)
     err2 = d2**2 * s2
 
-    m1 = np.dot(mat, pts2.T)
+    m1 = np.dot(mat.T, pts2.T)
     s1 = 1 / (m1[0]**2 + m1[1]**2)
     d1 = (pts1.T * m1).sum(axis = 0)
     err1 = d1**2 * s1
@@ -206,7 +204,7 @@ def compute_fundamental_matrix_error(mat, points):
     return np.where(err1 > err2, err1, err2)
 
 
-def m_findFundamentalMat(pts1, pts2, method, thresh = 10000.0, ratio_of_inliers = 0.99):
+def m_findFundamentalMat(pts1, pts2, method, thresh = 1.0, ratio_of_inliers = 0.99):
     """Commpute the fundamental matrix using the 8-point algorithm or RANSAC + 8-point algorithm.
     Parameters
     ----------
@@ -233,7 +231,6 @@ def m_findFundamentalMat(pts1, pts2, method, thresh = 10000.0, ratio_of_inliers 
     """
 
     st0 = np.random.get_state()
-
     # RANSAC + 8-Point
     if method == cv2.FM_8POINT + cv2.RANSAC or method == cv2.RANSAC:
         np.random.seed(0)
@@ -244,7 +241,7 @@ def m_findFundamentalMat(pts1, pts2, method, thresh = 10000.0, ratio_of_inliers 
         np.random.seed(0)
         __, F, __ = m_ransac(find_fundamental_matrix, compute_fundamental_matrix_error, 
             np.hstack([pts1, pts2]), num_samples = len(pts1), max_iter = 1)   
-        mask = np.ones(len(pts1))    
+        mask = np.ones(len(pts1)).astype('uint8')   
     else:
         raise ValueError("We only support 8-point algorithm and RANSAC.") 
 

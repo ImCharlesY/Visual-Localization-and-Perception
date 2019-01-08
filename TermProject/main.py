@@ -48,7 +48,7 @@ assert len(args.resolution) == 2
 findFundamentalMat = lambda pts1, pts2, method : cv2.findFundamentalMat(pts1, pts2, method, 1.0, 0.99)
 solvePnPRansac = lambda objectPoints, imagePoints, cameraMatrix, distCoeffs : cv2.solvePnPRansac(objectPoints, imagePoints, cameraMatrix, distCoeffs)
 if args.custom:
-    findFundamentalMat = lambda pts1, pts2, method : m_methods.m_findFundamentalMat(pts1, pts2, method, 10000.0, 0.99)
+    findFundamentalMat = lambda pts1, pts2, method : m_methods.m_findFundamentalMat(pts1, pts2, method, 1.0, 0.99)
     # solvePnPRansac = lambda objectPoints, imagePoints, cameraMatrix, distCoeffs : m_methods.m_solvePnP(objectPoints, imagePoints, cameraMatrix, distCoeffs)
 
 # Define all paths
@@ -111,7 +111,7 @@ def main():
 
     '''------------------------ Key Points Matching ------------------------------------------------------'''
     print('\n'+'-'*50)
-    print('Match key points between two images via SIFT..')
+    print('Match key points between two images via SIFT and SURF..')
 
     print('Match image 1 and image 2..')
     pts12, pts21 = feature.match_keypoints_between_images(img1, img2, 

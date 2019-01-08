@@ -126,7 +126,7 @@ def find_common_keypoints(pts1, pts2):
 
     mask = -np.ones((len(pts2))).astype('int')
     for i, row in enumerate(pts2, 1):
-        idx = np.where((pts1 == row).all(1))[0]
+        idx = np.where((np.abs(pts1 - row) < 1e-2).all(1))[0]
         if idx.size:
             mask[i - 1] = idx[0]
     return mask

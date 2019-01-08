@@ -20,6 +20,8 @@ def match_keypoints_between_images(img1, img2, output_path = None, inlier_points
     flann = cv2.FlannBasedMatcher(index_params, search_params)
 
     good = []
+    pts1 = []
+    pts2 = []
 
     # find the keypoints and descriptors with SIFT
     sift = cv2.xfeatures2d.SIFT_create()
@@ -31,6 +33,8 @@ def match_keypoints_between_images(img1, img2, output_path = None, inlier_points
     for i,(m,n) in enumerate(matches):
         if m.distance < 0.7*n.distance:
             good.append(m)
+            pts1.append(kp1[m.queryIdx].pt)
+            pts2.append(kp2[m.trainIdx].pt)
 
     # find the keypoints and descriptors with SURF
     surf = cv2.xfeatures2d.SURF_create()
@@ -42,17 +46,19 @@ def match_keypoints_between_images(img1, img2, output_path = None, inlier_points
     for i,(m,n) in enumerate(matches):
         if m.distance < 0.7*n.distance:
             good.append(m)
+            pts1.append(kp1[m.queryIdx].pt)
+            pts2.append(kp2[m.trainIdx].pt)
 
-    pts1 = np.asarray([kp1[m.queryIdx].pt for m in good]).astype('float64')
-    pts2 = np.asarray([kp2[m.trainIdx].pt for m in good]).astype('float64')
+    pts1 = np.array(pts1).astype('float64')
+    pts2 = np.array(pts2).astype('float64')
 
-    # Constrain matches to fit homography
-    __, mask = cv2.findHomography(pts1, pts2, cv2.RANSAC, 10.0)
-    mask = mask.ravel()
+    # # Constrain matches to fit homography
+    # __, mask = cv2.findHomography(pts1, pts2, cv2.RANSAC, 10.0)
+    # mask = mask.ravel()
 
-    # We select only inlier points
-    pts1 = pts1[mask == 1]
-    pts2 = pts2[mask == 1]  
+    # # We select only inlier points
+    # pts1 = pts1[mask == 1]
+    # pts2 = pts2[mask == 1]  
 
     if output_path is not None:
         if not os.path.exists(output_path):
