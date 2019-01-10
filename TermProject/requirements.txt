@@ -1,2 +1,2 @@
 matplotlib
-scipy==0.19.1
+scipy==1.1.0

@@ -12,9 +12,9 @@
 - python (verified on 3.6.7)
 
 #### Python Packages
-- numpy (verified on 1.12.1)
-- matplotlib (verified on 2.2.2)
-- scipy (verified on 0.19.1)
+- numpy (verified on 1.15.4)
+- matplotlib (verified on 3.0.2)
+- scipy (verified on 1.1.0)
 - __opencv (verified on 3.4.2 (anaconda's version) and 3.2.0.7 (pip's version))__
 
 ### Issue of OpenCV
@@ -43,7 +43,8 @@ Setup a Python virtual environment (optional):
 
 ```
 conda create -n m_env python=3.6.7
-source activate m_env
+source activate m_env # in Linux
+activate m_env        # in Windows
 ```
 
 Install the requirements:

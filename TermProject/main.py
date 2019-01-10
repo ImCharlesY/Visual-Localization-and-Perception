@@ -172,7 +172,6 @@ def main():
     print('\n'+'-'*50)
     print('Pose Estimation..')
 
-    print('Match key points between two images via SIFT..')
     print('Match image 1 and image 3..')
     pts3_2D_1, pts3_3D_1 = structure.find_3Dto2D_point_correspondences(pts13, pts31, pts3D, pts12)
     print('Find {} common matches.'.format(len(pts3_2D_1)))
